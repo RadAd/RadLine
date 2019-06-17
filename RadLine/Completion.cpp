@@ -270,13 +270,6 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
                 ++*i;
             }
 
-            bool closequote = (openquote || line[r.begin] == L'"') && line[r.end - 1] != L'"';
-            if (closequote)
-            {
-                line.insert(r.end, L'\"');
-                refresh = std::min(refresh, r.end);
-            }
-
             if (substr.compare(rp, std::wstring::npos, match) != 0)
             {
                 // TODO Make sure replace doesn't go over nSize
@@ -284,10 +277,17 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
                 refresh = std::min(refresh, r.begin + rp);
                 *i -= r.length() - rp;
                 *i += match.length();
+                r.end = r.begin + rp + match.length();
             }
 
+            bool closequote = (openquote || line[r.begin] == L'"') && line[r.end - 1] != L'"';
             if (closequote)
+            {
+                line.insert(r.end, L'\"');
+                refresh = std::min(refresh, r.end);
+                ++r.end;
                 ++*i;
+            }
 
             if (list.size() == 1 && match.back() != L'\\' && *i == line.length())
             {
