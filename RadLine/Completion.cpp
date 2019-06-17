@@ -78,6 +78,7 @@ namespace {
         return match;
     }
 
+    const wchar_t* delim = L" \t=";
     std::vector<range> findParam(const bufstring& line)
     {
         std::vector<range> rs;
@@ -85,12 +86,14 @@ namespace {
         r.begin = 0;
         while (r.begin < line.length())
         {
-            while (r.begin < line.length() && line[r.begin] == L' ')
+            //while (r.begin < line.length() && line[r.begin] == L' ')
+            while (r.begin < line.length() && wcschr(delim, line[r.begin]) != nullptr)
                 ++r.begin;
             if (r.begin < line.length())
             {
                 r.end = r.begin;
-                while (r.end < line.length() && line[r.end] != L' ')
+                //while (r.end < line.length() && line[r.end] != L' ')
+                while (r.end < line.length() && wcschr(delim, line[r.end]) == nullptr)
                 {
                     if (line[r.end] == L'\"')
                     {
