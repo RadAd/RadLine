@@ -302,16 +302,18 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
                 EasyWriteString(hConsoleOutput, line.begin() + refresh);
                 // TODO This could cause the screen to scroll shifting posstart
             }
+            const int scroll = std::max(Add(posstart, (SHORT) line.length(), size.X).Y - size.Y + 1, 0);
+            const COORD newposstart = Add(posstart, (SHORT) -scroll * size.X, size.X);
             {
-                const COORD pos = Add(posstart, (SHORT) *i, size.X);
+                const COORD pos = Add(newposstart, (SHORT) *i, size.X);
                 SetConsoleCursorPosition(hConsoleOutput, pos);
             }
 
-            assert(GetConsoleCursorPosition(hConsoleOutput) == Add(posstart, (SHORT) *i, size.X));
+            assert(GetConsoleCursorPosition(hConsoleOutput) == Add(newposstart, (SHORT) *i, size.X));
 #if _DEBUG
             std::vector<WCHAR> buf(line.length());
             DWORD read = 0;
-            ReadConsoleOutputCharacterW(hConsoleOutput, buf.data(), (DWORD) buf.size(), posstart, &read);
+            ReadConsoleOutputCharacterW(hConsoleOutput, buf.data(), (DWORD) buf.size(), newposstart, &read);
             assert(line.compare(0, line.length(), buf.data()) == 0);
 #endif
         }
