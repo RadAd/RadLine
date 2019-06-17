@@ -78,7 +78,7 @@ namespace {
         return match;
     }
 
-    const wchar_t* delim = L" \t=";
+    const wchar_t* delim = L" \t=<>|";
     std::vector<range> findParam(const bufstring& line)
     {
         std::vector<range> rs;
