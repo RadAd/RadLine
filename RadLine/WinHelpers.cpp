@@ -53,17 +53,19 @@ namespace {
     }
 };
 
-std::vector<std::wstring> findFiles(const std::wstring& s)
+std::vector<std::wstring> findFiles(const std::wstring& s, bool dirOnly)
 {
     std::vector<std::wstring> list;
 
-#if 0
     std::wstring FullName(s);
-#else
+    FullName.erase(std::remove(FullName.begin(), FullName.end(), L'\"'), FullName.end());
+
+#if 1
     wchar_t FullNameS[MAX_PATH];
-    ExpandEnvironmentStringsW(s.c_str(), FullNameS, ARRAYSIZE(FullNameS));
-    std::wstring FullName(FullNameS);
+    ExpandEnvironmentStringsW(FullName.c_str(), FullNameS, ARRAYSIZE(FullNameS));
+    FullName = FullNameS;
 #endif
+
     FullName += L'*';
 
     WIN32_FIND_DATAW FindFileData;
@@ -78,7 +80,8 @@ std::vector<std::wstring> findFiles(const std::wstring& s)
             {
                 if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
                     wcscat_s(FindFileData.cFileName, ARRAYSIZE(FindFileData.cFileName), L"\\");
-                list.push_back(FindFileData.cFileName);
+                if (!dirOnly || (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+                    list.push_back(FindFileData.cFileName);
             }
         } while (FindNextFileW(hFind, &FindFileData) != 0);
         FindClose(hFind);
@@ -113,7 +116,7 @@ std::vector<std::wstring> findPath(const std::wstring& s)
             std::wstring g(f);
             g += x;
 
-            append(list, findFiles(g));
+            append(list, findFiles(g, false));
         }
     }
 

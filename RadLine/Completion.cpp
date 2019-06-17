@@ -89,23 +89,19 @@ namespace {
                 ++r.begin;
             if (r.begin < line.length())
             {
-                if (line[r.begin] == L'\"')
+                r.end = r.begin;
+                while (r.end < line.length() && line[r.end] != L' ')
                 {
-                    bool inquotes = true;
-                    ++r.begin;
-                    r.end = r.begin + 1;
-                    while (r.end < line.length() && (inquotes || line[r.end] != L' '))
+                    if (line[r.end] == L'\"')
                     {
                         ++r.end;
-                        if (r.end < line.length() && line[r.end] == L'\"')
-                            inquotes = !inquotes;
+                        while (r.end < line.length() && line[r.end] != L'\"')
+                            ++r.end;
                     }
-                }
-                else
-                {
-                    r.end = r.begin + 1;
-                    while (r.end < line.length() && line[r.end] != L' ')
+                    else
+                    {
                         ++r.end;
+                    }
                 }
                 rs.push_back(r);
                 r.begin = r.end;
@@ -135,9 +131,10 @@ namespace {
         }
         else
         {
-            const wchar_t* pName = PathFindName(s.c_str());
+            bool dirOnly = !params.empty() && compare(line, params[0], L"cd") == 0;
+            const wchar_t* pName = PathFindName(s[0] == '"' ? s.c_str() + 1 : s.c_str());
             *i = pName - s.c_str();
-            append(all, findFiles(s));
+            append(all, findFiles(s, dirOnly));
         }
 
         return all;
@@ -235,8 +232,6 @@ SHORT DisplayPotentials(const HANDLE hConsoleOutput, const std::vector<std::wstr
 
 void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* extra, const COORD size)
 {
-    // TODO handle spaces
-
     std::vector<range> params = findParam(line);
 
     std::vector<range>::const_iterator p = params.begin();
@@ -245,7 +240,7 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
     if (p == params.end())
         return;
 
-    const std::wstring substr = line.substr(p->begin, *i - p->begin);
+    const std::wstring substr = line.substr(p->begin, std::min(*i, p->end) - p->begin);
 
     std::size_t rp = 0;
     const std::vector<std::wstring> list = findPotential(line, params, p, substr, &rp);
@@ -255,65 +250,58 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
     if (!list.empty())
     {
         const std::wstring match = getLongestMatch(list);
+        size_t refresh = line.length();
 
         if (match.length() > (substr.length() - rp) || list.size() == 1)
         {
             range r = *p;
 
-            bool openquote = (r.begin == 0 || line[r.begin - 1] != L'"') && match.find(L' ') != std::wstring::npos;
+            // TODO fix up handling inserting quotes
+            bool openquote = line[r.begin] != L'"' && match.find(L' ') != std::wstring::npos;
             if (openquote)
             {
                 line.insert(r.begin, L'"');
+                refresh = std::min(refresh, r.begin);
                 ++r.begin;
                 ++r.end;
                 ++*i;
             }
 
-            bool closequote = (r.begin > 0 && line[r.begin - 1] == L'"') && (r.end >= line.length() || line[r.end] != L'"');
+            bool closequote = (openquote || line[r.begin] == L'"') && line[r.end - 1] != L'"';
             if (closequote)
             {
                 line.insert(r.end, L'\"');
+                refresh = std::min(refresh, r.end);
             }
 
             if (substr.compare(rp, std::wstring::npos, match) != 0)
             {
                 // TODO Make sure replace doesn't go over nSize
                 line.replace(r.begin + rp, r.length() - rp, match);
-
-                COORD pos = GetConsoleCursorPosition(hConsoleOutput);
-                if (openquote)
-                {
-                    pos = Add(pos, (SHORT) r.begin - (SHORT) *i, size.X);
-                    assert(pos == Add(posstart, (SHORT) r.begin - 1, size.X));
-                    SetConsoleCursorPosition(hConsoleOutput, pos);
-                    EasyWriteString(hConsoleOutput, line.begin() + r.begin - 1);
-                }
-                else
-                {
-                    pos = Add(pos, (SHORT) (r.begin + rp) - (SHORT) *i, size.X);
-                    assert(pos == Add(posstart, (SHORT) (r.begin + rp), size.X));
-                    SetConsoleCursorPosition(hConsoleOutput, pos);
-                    EasyWriteString(hConsoleOutput, line.begin() + r.begin + rp);
-                }
-
-                *i = r.begin + rp + match.length();
-
-                if (line.length() > *i)
-                {
-                    pos = GetConsoleCursorPosition(hConsoleOutput);
-                    pos = Add(pos, (SHORT) *i - (SHORT) line.length(), size.X);
-                    SetConsoleCursorPosition(hConsoleOutput, pos);
-                }
-
-                assert(GetConsoleCursorPosition(hConsoleOutput) == Add(posstart, (SHORT) *i, size.X));
+                refresh = std::min(refresh, r.begin + rp);
+                *i -= r.length() - rp;
+                *i += match.length();
             }
-            // TODO else if openquote || close quote --- need to redraw the changes
+
+            if (closequote)
+                ++*i;
 
             if (list.size() == 1 && match.back() != L'\\' && *i == line.length())
             {
+                refresh = std::min(refresh, line.length());
                 line += L' ';
-                EasyWriteChar(hConsoleOutput, L' ');
                 ++*i;
+            }
+
+            {
+                const COORD pos = Add(posstart, (SHORT) refresh, size.X);
+                SetConsoleCursorPosition(hConsoleOutput, pos);
+                EasyWriteString(hConsoleOutput, line.begin() + refresh);
+                // TODO This could cause the screen to scroll shifting posstart
+            }
+            {
+                const COORD pos = Add(posstart, (SHORT) *i, size.X);
+                SetConsoleCursorPosition(hConsoleOutput, pos);
             }
 
             assert(GetConsoleCursorPosition(hConsoleOutput) == Add(posstart, (SHORT) *i, size.X));
