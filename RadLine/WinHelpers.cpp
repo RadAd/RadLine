@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <algorithm>
 #include <cctype>
+#include <sstream>
 
 namespace {
     bool CharCaseInsensitiveLess(wchar_t a, wchar_t b)
@@ -96,21 +97,24 @@ std::vector<std::wstring> findFiles(const std::wstring& s, bool dirOnly)
 
 std::vector<std::wstring> findFiles(const std::wstring& s, const std::vector<const wchar_t*>& xl)
 {
+    size_t dot = s.rfind(L'.');
+    size_t slash = s.rfind(L'\\');
+
     std::vector<std::wstring> list;
     for (const wchar_t *x : xl)
     {
-        std::wstring g(s);
-        g += x;
-
-        append(list, findFiles(g, false));  // TODO Maybe exclude dirs
+        // This the case where s is test.ex* and x is .exe
+        if (dot != std::wstring::npos && dot > slash && Match(s.substr(dot, s.length() - dot - 1), x, wcslen(x)))
+            append(list, findFiles(s, false));
+        else
+            append(list, findFiles(s + x, false));
     }
     return list;
 }
 
 std::vector<std::wstring> findExeFiles(const std::wstring& s)
 {
-    std::wstring f(s);
-    f += L'*';
+    std::wstring f(s + L'*');
 
     wchar_t pathext[1024] = L"";
     GetEnvironmentVariableW(L"PATHEXT", pathext);
@@ -133,12 +137,13 @@ std::vector<std::wstring> findPath(const std::wstring& s)
 
     for (const wchar_t *p : pl)
     {
-        std::wstring f(p);
-        f += L'\\';
-        f += s;
-        f += L'*';
+        std::wstringstream f;
+        f << p;
+        f << L'\\';
+        f << s;
+        f << L'*';
 
-        append(list, findFiles(f, xl));
+        append(list, findFiles(f.str(), xl));
     }
 
     std::sort(list.begin(), list.end(), FileNameLess);
