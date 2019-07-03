@@ -186,7 +186,16 @@ namespace {
             const wchar_t* pName = PathFindName(s[0] == '"' ? s.c_str() + 1 : s.c_str());
             *i = pName - s.c_str();
 
-            if (compare(line, *f, L"git") == 0 || compare(line, *f, L"git.exe") == 0)
+            // TODO copy and adjust *f to point to file name
+
+            if (compare(line, *f, L"alias") == 0)
+            {
+                if (std::distance(f, p) == 1)
+                    append(all, findAlias(s));
+                else
+                    append(all, findFiles(s + L"*", false));
+            }
+            else if (compare(line, *f, L"git") == 0 || compare(line, *f, L"git.exe") == 0)
             {
                 if (std::distance(f, p) == 1)   // TODO Skip over options
                     filter(all, s, git_cmds);

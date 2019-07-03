@@ -101,6 +101,8 @@ std::vector<std::wstring> findFiles(const std::wstring& s, const std::vector<con
     size_t slash = s.rfind(L'\\');
 
     std::vector<std::wstring> list;
+    append(list, findFiles(s, true));
+
     for (const wchar_t *x : xl)
     {
         // This the case where s is test.ex* and x is .exe
