@@ -124,7 +124,7 @@ namespace {
     {
         for (const wchar_t* w : words)
         {
-            if (s.length() <= wcslen(w) && _wcsnicmp(s.c_str(), w, s.length()) == 0)
+            if (Match(s, w, wcslen(w)))
                 all.push_back(w);
         }
     }
@@ -139,7 +139,7 @@ namespace {
         if (envBegin != std::wstring::npos)
         {
             *i = envBegin;
-            append(all, findEnv(s.substr(envBegin)));
+            append(all, findEnv(s.substr(envBegin + 1)));
         }
         else if (isFirstCommand(line, params, p))
         {
@@ -148,7 +148,7 @@ namespace {
                 *i = 0;
                 filter(all, s, internal_cmds);
                 append(all, findPath(s));
-                // TODO append(all, findAlias(s, i));
+                append(all, findAlias(s));
             }
             else
             {

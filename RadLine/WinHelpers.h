@@ -9,6 +9,11 @@ inline void append(std::vector<std::wstring>& all, const std::vector<std::wstrin
     all.insert(all.end(), other.begin(), other.end());
 }
 
+inline bool Match(const std::wstring& s, const wchar_t* p, size_t len)
+{
+    return (s.length() <= len && _wcsnicmp(s.c_str(), p, s.length()) == 0);
+}
+
 inline const wchar_t* PathFindName(const wchar_t* pFullName)
 {
     const wchar_t* pName = wcsrchr(pFullName, L'\\');
@@ -78,4 +83,5 @@ std::vector<std::wstring> findFiles(const std::wstring& s, bool dirOnly);
 std::vector<std::wstring> findExeFiles(const std::wstring& s);
 std::vector<std::wstring> findPath(const std::wstring& s);
 std::vector<std::wstring> findEnv(const std::wstring& s);
+std::vector<std::wstring> findAlias(const std::wstring& s);
 std::wstring getAlias(const std::wstring& s);

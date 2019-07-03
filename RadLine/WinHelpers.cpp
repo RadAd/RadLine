@@ -153,7 +153,7 @@ std::vector<std::wstring> findEnv(const std::wstring& s)
     const wchar_t*e = env;
     while (*e != L'\0')
     {
-        if (_wcsnicmp(s.c_str() + 1, e, s.length() - 1) == 0)
+        if (Match(s, e, wcslen(e)))
         {
             const wchar_t* eq = wcschr(e, L'=');
             std::wstring n(e, eq - e);
@@ -163,6 +163,22 @@ std::vector<std::wstring> findEnv(const std::wstring& s)
     }
     FreeEnvironmentStrings(env);
 
+    return list;
+}
+
+std::vector<std::wstring> findAlias(const std::wstring& s)
+{
+    std::vector<std::wstring> list;
+    wchar_t buf[10240] = L"";
+    GetConsoleAliases(buf, ARRAYSIZE(buf), L"cmd.exe");  // TODO Use this exe
+    for (const wchar_t* a = buf; *a != L'\0'; a += wcslen(a) + 1)
+    {
+        const wchar_t* eq = wcschr(a, L'=');
+        if (Match(s, a, eq - a))
+        {
+            list.push_back(std::wstring(a, eq - a));
+        }
+    }
     return list;
 }
 
