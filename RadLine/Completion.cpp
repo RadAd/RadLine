@@ -59,6 +59,14 @@ namespace {
         return p == params.begin() || isCommandSeparator(line, *(p - 1));
     }
 
+    std::vector<range>::const_iterator getFirstCommand(const bufstring& line, const std::vector<range>& params, std::vector<range>::const_iterator p)
+    {
+        std::vector<range>::const_iterator f = p;
+        while (f != params.begin() && !isCommandSeparator(line, *(f - 1)))
+            --f;
+        return f;
+    }
+
     inline bool CharCaseInsensitiveEqual(wchar_t a, wchar_t b)
     {
         return std::toupper(a) == std::toupper(b);
@@ -119,6 +127,20 @@ namespace {
         L"set", L"setlocal", L"shift", L"start", L"time", L"title", L"type", L"ver", L"verify", L"vol"
     };
 
+    const WCHAR* dir_only[] = {
+        L"cd", L"chdir", L"md", L"mkdir", L"pushd"
+    };
+
+    const WCHAR* git_cmds[] = {
+        L"clone", L"init", L"add", L"mv", L"reset", L"rm", L"bisect", L"grep", L"log", L"show", L"status"
+        L"branch", L"checkout", L"commit", L"diff", L"merge", L"rebase", L"tag", L"fetch", L"pull", L"push", L"help"
+    };
+
+    const WCHAR* reg_cmds[] = {
+        L"query", L"add", L"delete", L"copy", L"save", L"load",
+        L"unload", L"restore", L"compare", L"export", L"import", L"flags"
+    };
+
     template <size_t size>
     inline void filter(std::vector<std::wstring>& all, const std::wstring& s, const WCHAR*(&words)[size])
     {
@@ -159,10 +181,39 @@ namespace {
         }
         else
         {
-            bool dirOnly = !params.empty() && compare(line, params[0], L"cd") == 0;
+            std::vector<range>::const_iterator f = getFirstCommand(line, params, p);
+
             const wchar_t* pName = PathFindName(s[0] == '"' ? s.c_str() + 1 : s.c_str());
             *i = pName - s.c_str();
-            append(all, findFiles(s + L"*", dirOnly));
+
+            if (compare(line, *f, L"git") == 0 || compare(line, *f, L"git.exe") == 0)
+            {
+                if (std::distance(f, p) == 1)   // TODO Skip over options
+                    filter(all, s, git_cmds);
+                else
+                    append(all, findFiles(s + L"*", false));
+            }
+            else if (compare(line, *f, L"reg") == 0 || compare(line, *f, L"reg.exe") == 0)
+            {
+                if (std::distance(f, p) == 1)
+                    filter(all, s, reg_cmds);
+                else
+                    append(all, findFiles(s + L"*", false));
+            }
+            else
+            {
+                bool dirOnly = false;
+                for (const wchar_t* w : dir_only)
+                {
+                    if (compare(line, *f, w) == 0)
+                    {
+                        dirOnly = true;
+                        break;
+                    }
+                }
+
+                append(all, findFiles(s + L"*", dirOnly));
+            }
         }
 
         return all;

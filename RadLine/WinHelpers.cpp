@@ -61,9 +61,11 @@ std::vector<std::wstring> findFiles(const std::wstring& s, bool dirOnly)
     FullName.erase(std::remove(FullName.begin(), FullName.end(), L'\"'), FullName.end());
 
 #if 1
-    wchar_t FullNameS[MAX_PATH];
-    ExpandEnvironmentStringsW(FullName.c_str(), FullNameS, ARRAYSIZE(FullNameS));
-    FullName = FullNameS;
+    {
+        wchar_t FullNameS[MAX_PATH];
+        ExpandEnvironmentStringsW(FullName.c_str(), FullNameS, ARRAYSIZE(FullNameS));
+        FullName = FullNameS;
+    }
 #endif
 
     //FullName += L'*';
