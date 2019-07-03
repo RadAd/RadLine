@@ -69,6 +69,7 @@ inline void EasyWriteFormat(const HANDLE hStdOutput, LPCWCHAR format, ...)
 }
 
 std::vector<std::wstring> findFiles(const std::wstring& s, bool dirOnly);
+std::vector<std::wstring> findExeFiles(const std::wstring& s);
 std::vector<std::wstring> findPath(const std::wstring& s);
 std::vector<std::wstring> findEnv(const std::wstring& s);
 std::wstring getAlias(const std::wstring& s);

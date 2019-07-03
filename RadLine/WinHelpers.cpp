@@ -66,7 +66,7 @@ std::vector<std::wstring> findFiles(const std::wstring& s, bool dirOnly)
     FullName = FullNameS;
 #endif
 
-    FullName += L'*';
+    //FullName += L'*';
 
     WIN32_FIND_DATAW FindFileData;
     HANDLE hFind = FindFirstFileW(FullName.c_str(), &FindFileData);
@@ -92,6 +92,31 @@ std::vector<std::wstring> findFiles(const std::wstring& s, bool dirOnly)
     return list;
 }
 
+std::vector<std::wstring> findFiles(const std::wstring& s, const std::vector<const wchar_t*>& xl)
+{
+    std::vector<std::wstring> list;
+    for (const wchar_t *x : xl)
+    {
+        std::wstring g(s);
+        g += x;
+
+        append(list, findFiles(g, false));  // TODO Maybe exclude dirs
+    }
+    return list;
+}
+
+std::vector<std::wstring> findExeFiles(const std::wstring& s)
+{
+    std::wstring f(s);
+    f += L'*';
+
+    wchar_t pathext[1024] = L"";
+    GetEnvironmentVariableW(L"PATHEXT", pathext, ARRAYSIZE(pathext));
+    std::vector<const wchar_t*> xl(Split(pathext, L';'));
+
+    return findFiles(f, xl);
+}
+
 std::vector<std::wstring> findPath(const std::wstring& s)
 {
     wchar_t path[10240] = L"";
@@ -100,8 +125,8 @@ std::vector<std::wstring> findPath(const std::wstring& s)
     GetEnvironmentVariableW(L"PATHEXT", pathext, ARRAYSIZE(pathext));
 
     std::vector<const wchar_t*> pl(Split(path, L';'));
+    pl.push_back(L".");
     std::vector<const wchar_t*> xl(Split(pathext, L';'));
-
     std::vector<std::wstring> list;
 
     for (const wchar_t *p : pl)
@@ -111,13 +136,7 @@ std::vector<std::wstring> findPath(const std::wstring& s)
         f += s;
         f += L'*';
 
-        for (const wchar_t *x : xl)
-        {
-            std::wstring g(f);
-            g += x;
-
-            append(list, findFiles(g, false));
-        }
+        append(list, findFiles(f, xl));
     }
 
     std::sort(list.begin(), list.end(), FileNameLess);

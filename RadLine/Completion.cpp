@@ -118,13 +118,6 @@ namespace {
         // TODO Handle quotes already on params
 
         std::vector<std::wstring> all;
-        if (s.find('\\') == std::wstring::npos && isFirstCommand(line, params, p))
-        {
-            *i = 0;
-            // TODO append(all, findInternal(s));
-            append(all, findPath(s));
-            // TODO append(all, findAlias(s, i));
-        }
 
         size_t envBegin = findEnvBegin(s);
         if (envBegin != std::wstring::npos)
@@ -132,12 +125,28 @@ namespace {
             *i = envBegin;
             append(all, findEnv(s.substr(envBegin)));
         }
+        else if (isFirstCommand(line, params, p))
+        {
+            if (s.find('\\') == std::wstring::npos)
+            {
+                *i = 0;
+                // TODO append(all, findInternal(s));
+                append(all, findPath(s));
+                // TODO append(all, findAlias(s, i));
+            }
+            else
+            {
+                const wchar_t* pName = PathFindName(s[0] == '"' ? s.c_str() + 1 : s.c_str());
+                *i = pName - s.c_str();
+                append(all, findExeFiles(s));
+            }
+        }
         else
         {
             bool dirOnly = !params.empty() && compare(line, params[0], L"cd") == 0;
             const wchar_t* pName = PathFindName(s[0] == '"' ? s.c_str() + 1 : s.c_str());
             *i = pName - s.c_str();
-            append(all, findFiles(s, dirOnly));
+            append(all, findFiles(s + L"*", dirOnly));
         }
 
         return all;
