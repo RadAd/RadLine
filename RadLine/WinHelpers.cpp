@@ -79,7 +79,7 @@ std::vector<std::wstring> findFiles(const std::wstring& s, bool dirOnly)
                 && wcscmp(FindFileData.cFileName, L"..") != 0)
             {
                 if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
-                    wcscat_s(FindFileData.cFileName, ARRAYSIZE(FindFileData.cFileName), L"\\");
+                    wcscat_s(FindFileData.cFileName, L"\\");
                 if (!dirOnly || (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
                     list.push_back(FindFileData.cFileName);
             }
@@ -111,7 +111,7 @@ std::vector<std::wstring> findExeFiles(const std::wstring& s)
     f += L'*';
 
     wchar_t pathext[1024] = L"";
-    GetEnvironmentVariableW(L"PATHEXT", pathext, ARRAYSIZE(pathext));
+    GetEnvironmentVariableW(L"PATHEXT", pathext);
     std::vector<const wchar_t*> xl(Split(pathext, L';'));
 
     return findFiles(f, xl);
@@ -120,9 +120,9 @@ std::vector<std::wstring> findExeFiles(const std::wstring& s)
 std::vector<std::wstring> findPath(const std::wstring& s)
 {
     wchar_t path[10240] = L"";
-    GetEnvironmentVariableW(L"PATH", path, ARRAYSIZE(path));
+    GetEnvironmentVariableW(L"PATH", path);
     wchar_t pathext[1024] = L"";
-    GetEnvironmentVariableW(L"PATHEXT", pathext, ARRAYSIZE(pathext));
+    GetEnvironmentVariableW(L"PATHEXT", pathext);
 
     std::vector<const wchar_t*> pl(Split(path, L';'));
     pl.push_back(L".");

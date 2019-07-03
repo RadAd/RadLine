@@ -26,7 +26,7 @@ extern "C" {
             DebugOut("RadLine PCONSOLE_READCONSOLE_CONTROL %d %d 0x%08x 0x%08x\n", pInputControl->nLength, pInputControl->nInitialChars, pInputControl->dwCtrlWakeupMask, pInputControl->dwControlKeyState);
 
         wchar_t enabled[100] = L"";
-        GetEnvironmentVariableW(L"RADLINE", enabled, ARRAYSIZE(enabled));
+        GetEnvironmentVariableW(L"RADLINE", enabled);
 
         // TODO Check console mode
         const HANDLE hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);

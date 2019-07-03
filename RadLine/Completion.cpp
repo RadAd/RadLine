@@ -113,6 +113,22 @@ namespace {
         return rs;
     }
 
+    const WCHAR* internal_cmds[] = {
+        L"assoc", L"call", L"cd", L"chdir", L"cls", L"color", L"copy", L"date", L"del", L"dir", L"echo", L"endlocal", L"erase", L"exit", L"for",
+        L"ftype", L"goto", L"if", L"md", L"mkdir", L"mklink", L"move", L"path", L"popd", L"prompt", L"pushd", L"rem", L"ren", L"rd", L"rmdir",
+        L"set", L"setlocal", L"shift", L"start", L"time", L"title", L"type", L"ver", L"verify", L"vol"
+    };
+
+    template <size_t size>
+    inline void filter(std::vector<std::wstring>& all, const std::wstring& s, const WCHAR*(&words)[size])
+    {
+        for (const wchar_t* w : words)
+        {
+            if (s.length() <= wcslen(w) && _wcsnicmp(s.c_str(), w, s.length()) == 0)
+                all.push_back(w);
+        }
+    }
+
     std::vector<std::wstring> findPotential(const bufstring& line, const std::vector<range>& params, std::vector<range>::const_iterator p, const std::wstring& s, std::size_t* i)
     {
         // TODO Handle quotes already on params
@@ -130,7 +146,7 @@ namespace {
             if (s.find('\\') == std::wstring::npos)
             {
                 *i = 0;
-                // TODO append(all, findInternal(s));
+                filter(all, s, internal_cmds);
                 append(all, findPath(s));
                 // TODO append(all, findAlias(s, i));
             }

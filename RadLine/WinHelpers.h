@@ -15,6 +15,12 @@ inline const wchar_t* PathFindName(const wchar_t* pFullName)
     return pName ? pName + 1 : pFullName;
 }
 
+template <size_t size>
+inline DWORD GetEnvironmentVariableW(LPCWSTR lpName, WCHAR (&rBuffer)[size])
+{
+    return GetEnvironmentVariableW(lpName, rBuffer, size);
+}
+
 inline COORD GetConsoleCursorPosition(const HANDLE hStdOutput)
 {
     CONSOLE_SCREEN_BUFFER_INFO csbi = {};
