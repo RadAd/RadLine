@@ -178,6 +178,7 @@ namespace {
                 *i = pName - s.c_str();
                 append(all, findExeFiles(s));
             }
+            //append(all, findFiles(s + L"*", false));
         }
         else
         {
@@ -188,10 +189,17 @@ namespace {
 
             // TODO copy and adjust *f to point to file name
 
-            if (compare(line, *f, L"alias") == 0)
+            if (compare(line, *f, L"alias") == 0 || compare(line, *f, L"alias.bat") == 0)
             {
                 if (std::distance(f, p) == 1)
                     append(all, findAlias(s));
+                else
+                    append(all, findFiles(s + L"*", false));
+            }
+            else if (compare(line, *f, L"where") == 0 || compare(line, *f, L"where.exe") == 0)
+            {
+                if (std::distance(f, p) == 1)   // TODO Skip over options
+                    append(all, findPath(s));
                 else
                     append(all, findFiles(s + L"*", false));
             }
@@ -325,10 +333,8 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
     std::vector<range>::const_iterator p = params.begin();
     while (p != params.end() && *i > p->end)
         ++p;
-    if (p == params.end())
-        return;
 
-    const std::wstring substr = line.substr(p->begin, std::min(*i, p->end) - p->begin);
+    const std::wstring substr = p != params.end() && *i >= p->begin ? line.substr(p->begin, std::min(*i, p->end) - p->begin) : std::wstring();
 
     std::size_t rp = 0;
     const std::vector<std::wstring> list = findPotential(line, params, p, substr, &rp);
@@ -342,10 +348,10 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
 
         if (match.length() > (substr.length() - rp) || list.size() == 1)
         {
-            range r = *p;
+            range r = p != params.end() ? *p : range({ line.length(), line.length() });
 
             // TODO fix up handling inserting quotes
-            bool openquote = line[r.begin] != L'"' && match.find(L' ') != std::wstring::npos;
+            bool openquote = r.begin < line.length() && line[r.begin] != L'"' && match.find(L' ') != std::wstring::npos;
             if (openquote)
             {
                 line.insert(r.begin, L'"');
