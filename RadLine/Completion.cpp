@@ -24,12 +24,18 @@ namespace {
 
     inline std::wstring substr(const bufstring& s, range r)
     {
-        return s.substr(r.begin, r.end - r.begin);
+        return s.substr(r.begin, r.length());
     }
 
     inline int compare(const bufstring& s, range r, const wchar_t* cmp)
     {
-        return s.compare(r.begin, r.end - r.begin, cmp);
+        size_t len = wcslen(cmp);
+        if (len < r.length())
+            return 1;   // TODO Should this be 1 or -1 ???
+        else if (len > r.length())
+            return -1;  // TODO Should this be 1 or -1 ???
+        else
+            return s.compare(r.begin, r.length(), cmp);
     }
 
     size_t findEnvBegin(const std::wstring& s)
