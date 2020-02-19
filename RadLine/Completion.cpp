@@ -92,7 +92,11 @@ namespace {
         return match;
     }
 
-    const wchar_t* delim = L" \t=<>|";
+    const wchar_t* ws = L" \t";
+    const wchar_t* delim2 = L"=<>|&";
+    inline bool isWhiteSpace(wchar_t c) { return wcschr(ws, c) != nullptr; }
+    inline bool isDelim(wchar_t c) { return wcschr(delim2, c) != nullptr; }
+
     std::vector<range> findParam(const bufstring& line)
     {
         std::vector<range> rs;
@@ -101,18 +105,27 @@ namespace {
         while (r.begin < line.length())
         {
             //while (r.begin < line.length() && line[r.begin] == L' ')
-            while (r.begin < line.length() && wcschr(delim, line[r.begin]) != nullptr)
+            while (r.begin < line.length() && isWhiteSpace(line[r.begin]))
                 ++r.begin;
             if (r.begin < line.length())
             {
                 r.end = r.begin;
                 //while (r.end < line.length() && line[r.end] != L' ')
-                while (r.end < line.length() && wcschr(delim, line[r.end]) == nullptr)
+                while (r.end < line.length() && !isWhiteSpace(line[r.end]))
                 {
-                    if (line[r.end] == L'\"')
+                    if ((r.end == r.begin || line[r.end - 1] != '^') && isDelim(line[r.end]))
+                    {
+                        if (r.end == r.begin || isWhiteSpace(line[r.end - 1]))
+                            while ((r.end == r.begin || line[r.end - 1] != '^') && isDelim(line[r.end]))
+                                ++r.end;
+                        break;
+                    }
+                    else if (line[r.end] == L'\"')
                     {
                         ++r.end;
                         while (r.end < line.length() && line[r.end] != L'\"')
+                            ++r.end;
+                        if (r.end < line.length())
                             ++r.end;
                     }
                     else
