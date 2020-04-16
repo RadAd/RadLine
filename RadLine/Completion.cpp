@@ -460,7 +460,7 @@ void CleanUpExtra(const HANDLE hConsoleOutput, Extra* extra)
 
         COORD pos = { 0, extra->line };
         DWORD written = 0;
-        FillConsoleOutputCharacter(hConsoleOutput, L' ', extra->length * csbi.dwSize.Y, pos, &written);
+        FillConsoleOutputCharacter(hConsoleOutput, L' ', extra->length * csbi.dwSize.X, pos, &written);
 
         extra->length = 0;
     }
