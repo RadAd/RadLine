@@ -213,42 +213,42 @@ namespace {
                 if (std::distance(f, p) == 1)
                     append(all, findAlias(s));
                 else
-                    append(all, findFiles(s + L"*", false));
+                    append(all, findFiles(s + L"*", FindFilesE::All));
             }
             else if (compare(line, *f, L"where") == 0 || compare(line, *f, L"where.exe") == 0)
             {
                 if (std::distance(f, p) == 1)   // TODO Skip over options
                     append(all, findPath(s));
                 else
-                    append(all, findFiles(s + L"*", false));
+                    append(all, findFiles(s + L"*", FindFilesE::All));
             }
             else if (compare(line, *f, L"git") == 0 || compare(line, *f, L"git.exe") == 0)
             {
                 if (std::distance(f, p) == 1)   // TODO Skip over options
                     filter(all, s, git_cmds);
                 else
-                    append(all, findFiles(s + L"*", false));
+                    append(all, findFiles(s + L"*", FindFilesE::All));
             }
             else if (compare(line, *f, L"reg") == 0 || compare(line, *f, L"reg.exe") == 0)
             {
                 if (std::distance(f, p) == 1)
                     filter(all, s, reg_cmds);
                 else
-                    append(all, findFiles(s + L"*", false));
+                    append(all, findFiles(s + L"*", FindFilesE::All));
             }
             else
             {
-                bool dirOnly = false;
+                FindFilesE filter = FindFilesE::All;
                 for (const wchar_t* w : dir_only)
                 {
                     if (compare(line, *f, w) == 0)
                     {
-                        dirOnly = true;
+                        filter = FindFilesE::DirOnly;
                         break;
                     }
                 }
 
-                append(all, findFiles(s + L"*", dirOnly));
+                append(all, findFiles(s + L"*", filter));
             }
         }
 

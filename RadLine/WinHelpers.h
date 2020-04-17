@@ -84,7 +84,8 @@ inline void EasyWriteFormat(const HANDLE hStdOutput, LPCWCHAR format, ...)
     va_end(args);
 }
 
-std::vector<std::wstring> findFiles(const std::wstring& s, bool dirOnly);
+enum class FindFilesE { All, DirOnly, FileOnly };
+std::vector<std::wstring> findFiles(const std::wstring& s, FindFilesE filter);
 std::vector<std::wstring> findExeFiles(const std::wstring& s);
 std::vector<std::wstring> findPath(const std::wstring& s);
 std::vector<std::wstring> findEnv(const std::wstring& s);

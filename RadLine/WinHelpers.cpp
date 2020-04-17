@@ -54,7 +54,7 @@ namespace {
     }
 };
 
-std::vector<std::wstring> findFiles(const std::wstring& s, bool dirOnly)
+std::vector<std::wstring> findFiles(const std::wstring& s, FindFilesE filter)
 {
     std::vector<std::wstring> list;
 
@@ -86,7 +86,18 @@ std::vector<std::wstring> findFiles(const std::wstring& s, bool dirOnly)
             {
                 if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
                     wcscat_s(FindFileData.cFileName, L"\\");
-                if (!dirOnly || (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+                bool add = true;
+                switch (filter)
+                {
+                case FindFilesE::DirOnly:
+                    add = (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+                    break;
+
+                case FindFilesE::FileOnly:
+                    add = (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
+                    break;
+                }
+                if (add)
                     list.push_back(FindFileData.cFileName);
             }
         } while (FindNextFileW(hFind, &FindFileData) != 0);
@@ -104,15 +115,15 @@ std::vector<std::wstring> findFiles(const std::wstring& s, const std::vector<con
     size_t slash = s.rfind(L'\\');
 
     std::vector<std::wstring> list;
-    append(list, findFiles(s, true));
+    append(list, findFiles(s, FindFilesE::DirOnly));
 
     for (const wchar_t *x : xl)
     {
         // This the case where s is test.ex* and x is .exe
         if (dot != std::wstring::npos && dot > slash && Match(s.substr(dot, s.length() - dot - 1), x, wcslen(x)))
-            append(list, findFiles(s, false));
+            append(list, findFiles(s, FindFilesE::FileOnly));
         else
-            append(list, findFiles(s + x, false));
+            append(list, findFiles(s + x, FindFilesE::FileOnly));
     }
     return list;
 }
