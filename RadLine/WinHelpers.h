@@ -26,6 +26,11 @@ inline DWORD GetEnvironmentVariableW(LPCWSTR lpName, WCHAR (&rBuffer)[size])
     return GetEnvironmentVariableW(lpName, rBuffer, size);
 }
 
+inline DWORD GetEnvironmentVariableW(LPCWSTR lpName, std::vector<wchar_t>& buffer)
+{
+    return GetEnvironmentVariableW(lpName, buffer.data(), (DWORD) buffer.size());
+}
+
 inline COORD GetConsoleCursorPosition(const HANDLE hStdOutput)
 {
     CONSOLE_SCREEN_BUFFER_INFO csbi = {};
@@ -73,7 +78,7 @@ inline void EasyWriteFormat(const HANDLE hStdOutput, LPCWCHAR format, ...)
     WCHAR buffer[1024];
     va_list args;
     va_start(args, format);
-    int len = _vsnwprintf_s(buffer, 1024, format, args);
+    int len = _vsnwprintf_s(buffer, ARRAYSIZE(buffer), format, args);
     DWORD written = 0;
     WriteConsoleW(hStdOutput, buffer, len, &written, nullptr);
     va_end(args);

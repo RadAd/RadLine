@@ -64,7 +64,10 @@ std::vector<std::wstring> findFiles(const std::wstring& s, bool dirOnly)
 #if 1
     {
         wchar_t FullNameS[MAX_PATH];
+        GetCurrentDirectoryW(ARRAYSIZE(FullNameS), FullNameS);
+        SetEnvironmentVariableW(L"CD", FullNameS);
         ExpandEnvironmentStringsW(FullName.c_str(), FullNameS, ARRAYSIZE(FullNameS));
+        SetEnvironmentVariableW(L"CD", nullptr);
         FullName = FullNameS;
     }
 #endif
@@ -127,14 +130,14 @@ std::vector<std::wstring> findExeFiles(const std::wstring& s)
 
 std::vector<std::wstring> findPath(const std::wstring& s)
 {
-    wchar_t path[10240] = L"";
+    std::vector<wchar_t> path(10240);
     GetEnvironmentVariableW(L"PATH", path);
-    wchar_t pathext[1024] = L"";
+    std::vector<wchar_t> pathext(10240);
     GetEnvironmentVariableW(L"PATHEXT", pathext);
 
-    std::vector<const wchar_t*> pl(Split(path, L';'));
+    std::vector<const wchar_t*> pl(Split(path.data(), L';'));
     pl.push_back(L".");
-    std::vector<const wchar_t*> xl(Split(pathext, L';'));
+    std::vector<const wchar_t*> xl(Split(pathext.data(), L';'));
     std::vector<std::wstring> list;
 
     for (const wchar_t *p : pl)
@@ -178,9 +181,9 @@ std::vector<std::wstring> findEnv(const std::wstring& s)
 std::vector<std::wstring> findAlias(const std::wstring& s)
 {
     std::vector<std::wstring> list;
-    wchar_t buf[10240] = L"";
-    GetConsoleAliases(buf, ARRAYSIZE(buf), L"cmd.exe");  // TODO Use this exe
-    for (const wchar_t* a = buf; *a != L'\0'; a += wcslen(a) + 1)
+    std::vector<wchar_t> buf(10240);
+    GetConsoleAliases(buf.data(), (DWORD) buf.size(), L"cmd.exe");  // TODO Use this exe
+    for (const wchar_t* a = buf.data(); *a != L'\0'; a += wcslen(a) + 1)
     {
         const wchar_t* eq = wcschr(a, L'=');
         if (Match(s, a, eq - a))

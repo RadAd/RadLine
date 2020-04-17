@@ -106,9 +106,9 @@ size_t RadLine(const HANDLE hStdInput, const HANDLE hStdOutput, wchar_t* lpBuffe
         case VK_TAB:
             {
                 CleanUpExtra(hStdOutput, &extra);
-                assert(GetConsoleCursorPosition(hStdOutput) == Add(start, (int) i, size.X));
+                assert(GetConsoleCursorPosition(hStdOutput) == Add(start, (SHORT) (int) i, size.X));
                 Complete(hStdOutput, line, &i, &extra, size);
-                assert(GetConsoleCursorPosition(hStdOutput) == Add(start, (int) i, size.X));
+                assert(GetConsoleCursorPosition(hStdOutput) == Add(start, (SHORT) (int) i, size.X));
 
                 // TODO Need to detect if screen has scrolled to adjust start
             }
@@ -205,7 +205,7 @@ size_t RadLine(const HANDLE hStdInput, const HANDLE hStdOutput, wchar_t* lpBuffe
             if (i < line.length())
             {
                 i = line.length();
-                SetConsoleCursorPosition(hStdOutput, Add(start, (int) i, size.X));
+                SetConsoleCursorPosition(hStdOutput, Add(start, (SHORT) (int) i, size.X));
             }
             break;
 
@@ -244,7 +244,7 @@ size_t RadLine(const HANDLE hStdInput, const HANDLE hStdOutput, wchar_t* lpBuffe
         }
         assert(i >= 0);
         assert(i <= line.length());
-        assert(GetConsoleCursorPosition(hStdOutput) == Add(start, (int) i, size.X));
+        assert(GetConsoleCursorPosition(hStdOutput) == Add(start, (SHORT) (int) i, size.X));
     }
 
     history.push_back(line.str());

@@ -8,7 +8,7 @@ void DebugOut(_In_ _Printf_format_string_ _Printf_format_string_params_(0)  cons
     char buffer[1024];
     va_list args;
     va_start(args, format);
-    vsnprintf_s(buffer, 1024, format, args);
+    vsnprintf_s(buffer, ARRAYSIZE(buffer), format, args);
     OutputDebugStringA(buffer);
     va_end(args);
 }
@@ -18,7 +18,7 @@ void DebugOut(_In_ _Printf_format_string_ _Printf_format_string_params_(0)  cons
     wchar_t buffer[1024];
     va_list args;
     va_start(args, format);
-    _vsnwprintf_s(buffer, 1024, format, args);
+    _vsnwprintf_s(buffer, ARRAYSIZE(buffer), format, args);
     OutputDebugStringW(buffer);
     va_end(args);
 }
