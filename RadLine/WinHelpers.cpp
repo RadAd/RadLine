@@ -120,7 +120,7 @@ std::vector<std::wstring> findFiles(const std::wstring& s, const std::vector<con
     for (const wchar_t *x : xl)
     {
         // This the case where s is test.ex* and x is .exe
-        if (dot != std::wstring::npos && dot > slash && Match(s.substr(dot, s.length() - dot - 1), x, wcslen(x)))
+        if (dot != std::wstring::npos && dot > slash && Match(s.substr(dot, s.length() - dot - 1), x))
             append(list, findFiles(s, FindFilesE::FileOnly));
         else
             append(list, findFiles(s + x, FindFilesE::FileOnly));
@@ -173,10 +173,10 @@ std::vector<std::wstring> findEnv(const std::wstring& s)
     std::vector<std::wstring> list;
 
     LPWCH env = GetEnvironmentStringsW();
-    const wchar_t*e = env;
+    const wchar_t* e = env;
     while (*e != L'\0')
     {
-        if (Match(s, e, wcslen(e)))
+        if (Match(s, e))
         {
             const wchar_t* eq = wcschr(e, L'=');
             std::wstring n(e, eq - e);

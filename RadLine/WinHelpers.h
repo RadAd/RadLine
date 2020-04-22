@@ -14,6 +14,11 @@ inline bool Match(const std::wstring& s, const wchar_t* p, size_t len)
     return (s.length() <= len && _wcsnicmp(s.c_str(), p, s.length()) == 0);
 }
 
+inline bool Match(const std::wstring& s, const wchar_t* p)
+{
+    return Match(s, p, wcslen(p));
+}
+
 inline const wchar_t* PathFindName(const wchar_t* pFullName)
 {
     const wchar_t* pName = wcsrchr(pFullName, L'\\');
