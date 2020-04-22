@@ -330,12 +330,15 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
     while (p != params.end() && (line.begin() + *i) > p->end())
         ++p;
 
-    const std::wstring substr = p != params.end() && (line.begin() + *i) >= p->begin() ? line.substr(p->begin() - line.begin(), std::min(const_cast<const wchar_t*>(line.begin() + *i), p->end()) - p->begin()) : std::wstring();
+    const std::wstring substr = p != params.end() && (line.begin() + *i) >= p->begin()
+        //? line.substr(p->begin() - line.begin(), std::min(const_cast<const wchar_t*>(line.begin() + *i), p->end()) - p->begin())
+        ? str(nonstd::wstring_view(p->begin(), std::min(p->begin() - line.begin() + *i, p->length())))
+        : std::wstring();
 
     std::size_t rp = 0;
     const std::vector<std::wstring> list = findPotential(params, p, substr, &rp);
 
-    const COORD posstart = Add(GetConsoleCursorPosition(hConsoleOutput), -(SHORT) *i, size.X);
+    const COORD posstart = Add(GetConsoleCursorPosition(hConsoleOutput), - (SHORT) *i, size.X);
 
     if (!list.empty())
     {
@@ -350,7 +353,7 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
             bool openquote = r.begin() < line.end() && r.front() != L'"' && match.find(L' ') != std::wstring::npos;
             if (openquote)
             {
-                line.insert(r.begin() - line.begin(), L'"');
+                line.insert(r.begin(), L'"');
                 refresh = std::min(refresh, r.begin());
                 r = nonstd::wstring_view(r.begin() + 1, r.length());
                 ++*i;
@@ -359,9 +362,11 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
             if (substr.compare(rp, std::wstring::npos, match) != 0)
             {
                 // TODO Make sure replace doesn't go over nSize
-                line.replace(r.begin() - line.begin() + rp, r.length() - rp, match);
-                refresh = std::min(refresh, r.begin() + rp);
-                *i -= r.length() - rp;
+                nonstd::wstring_view nr = r;
+                nr.remove_prefix(rp);
+                line.replace(nr.begin(), nr.length(), match);
+                refresh = std::min(refresh, nr.begin());
+                *i -= nr.length();
                 *i += match.length();
                 r = nonstd::wstring_view(r.begin(), rp + match.length());
             }
@@ -369,7 +374,7 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
             bool closequote = (openquote || r.front() == L'"') && r.back() != L'"';
             if (closequote)
             {
-                line.insert(r.end() - line.begin(), L'\"');
+                line.insert(r.end(), L'\"');
                 refresh = std::min(refresh, r.end());
                 r = nonstd::wstring_view(r.begin(), r.length() + 1);
                 ++*i;
@@ -397,10 +402,11 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
 
             assert(GetConsoleCursorPosition(hConsoleOutput) == Add(newposstart, (SHORT) *i, size.X));
 #if _DEBUG
-            std::vector<WCHAR> buf(line.length());
+            std::vector<WCHAR> buf(line.length() + 1);
             DWORD read = 0;
             ReadConsoleOutputCharacterW(hConsoleOutput, buf.data(), (DWORD) buf.size(), newposstart, &read);
-            assert(line.compare(0, line.length(), buf.data()) == 0);
+            buf[line.length()] = L'\0';
+            assert(nonstd::wstring_view(line.begin(), line.length()).compare(buf.data()) == 0);
 #endif
         }
         else
@@ -495,7 +501,7 @@ void ExpandAlias(bufstring& line)
                     {
                         std::wstring s;
                         if ((pb + 1) <= pe)
-                            s = line.substr((pb + 1)->begin() - line.begin(), pe->end() - (pb + 1)->begin());
+                            s = str(nonstd::wstring_view((pb + 1)->begin(), pe->end() - (pb + 1)->begin()));
                         ae.replace(i - 1, 2, s);
                         i += s.length() - 1;
 
@@ -510,6 +516,6 @@ void ExpandAlias(bufstring& line)
                 break;
         }
 
-        line.replace(pb->begin() - line.begin(), pe->length(), ae);
+        line.replace(pb->begin(), pe->length(), ae);
     }
 }

@@ -247,7 +247,7 @@ size_t RadLine(const HANDLE hStdInput, const HANDLE hStdOutput, wchar_t* lpBuffe
         assert(GetConsoleCursorPosition(hStdOutput) == Add(start, (SHORT) (int) i, size.X));
     }
 
-    history.push_back(line.str());
+    history.push_back(std::wstring(line.begin(), line.end()));
 
     ExpandAlias(line);
 

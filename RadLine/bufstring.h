@@ -47,6 +47,18 @@ public:
         assert(m_buf[m_len] == L'\0');
     }
 
+    void insert(const wchar_t* b, wchar_t c)
+    {
+        assert(b >= begin());
+        assert(b <= end());
+        wchar_t* lb = begin() + (b - begin());
+        wmemmove(lb + 1, lb, end() - lb + 1);
+        *lb = c;
+        ++m_len;
+        assert(m_buf[m_len] == L'\0');
+    }
+
+#if 0
     void replace(size_t b, size_t l, const std::wstring& s)
     {
         assert(b >= 0);
@@ -59,21 +71,27 @@ public:
         m_len += d;
         assert(m_buf[m_len] == L'\0');
     }
+#endif
+
+    void replace(const wchar_t* b, size_t l, const std::wstring& s)
+    {
+        assert(b >= begin());
+        assert(b <= end());
+        wchar_t* lb = begin() + (b - begin());
+        assert(l >= 0);
+        assert((lb + l) <= end());
+        int d = (int)(s.length() - l);
+        wmemmove(lb + l + d, lb + l, end() - lb - l + 1);
+        wmemmove(lb, s.c_str(), s.length());
+        m_len += d;
+        assert(m_buf[m_len] == L'\0');
+    }
 
     void append(const wchar_t* w, size_t l)
     {
         wmemmove(end(), w, l);
         m_len += l;
         m_buf[m_len] = L'\0';
-    }
-
-    std::wstring substr(size_t b, size_t l) const
-    {
-        assert(b >= 0);
-        assert(b <= m_len);
-        assert(l >= 0);
-        assert((b + l) <= m_len);
-        return std::wstring(begin() + b, l);
     }
 
     size_t length() const
@@ -86,16 +104,6 @@ public:
         m_len = 0;
         m_buf[m_len] = L'\0';
         assert(m_buf[m_len] == L'\0');
-    }
-
-    std::wstring str() const
-    {
-        return std::wstring(begin(), end());
-    }
-
-    int compare(size_t b, size_t l, const wchar_t* s) const
-    {
-        return wcsncmp(begin() + b, s, l);
     }
 
     bufstring& operator+=(const wchar_t* w)
