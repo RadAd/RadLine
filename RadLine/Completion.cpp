@@ -210,6 +210,8 @@ namespace {
             {
                 if (std::distance(f, p) == 1)
                     filter(all, s, reg_cmds);
+                else if (std::distance(f, p) == 2)
+                    append(all, findRegKey(s));
                 else
                     append(all, findFiles(s + L"*", FindFilesE::All));
             }

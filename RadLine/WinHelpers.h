@@ -21,7 +21,13 @@ inline bool Match(const std::wstring& s, const wchar_t* p)
 
 inline const wchar_t* PathFindName(const wchar_t* pFullName)
 {
-    const wchar_t* pName = wcsrchr(pFullName, L'\\');
+    const wchar_t* pName = nullptr;
+    for (const wchar_t* f = L"\\/:"; *f != L'\0'; ++f)
+    {
+        const wchar_t* t = wcsrchr(pFullName, *f);
+        if (t > pName)
+            pName = t;
+    }
     return pName ? pName + 1 : pFullName;
 }
 
@@ -96,3 +102,4 @@ std::vector<std::wstring> findPath(const std::wstring& s);
 std::vector<std::wstring> findEnv(const std::wstring& s);
 std::vector<std::wstring> findAlias(const std::wstring& s);
 std::wstring getAlias(const std::wstring& s);
+std::vector<std::wstring> findRegKey(const std::wstring& s);
