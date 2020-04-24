@@ -17,6 +17,16 @@ namespace {
         return std::wstring(s.begin(), s.end());
     }
 
+    nonstd::wstring_view unquote(nonstd::wstring_view s)
+    {
+        if (s.size() >= 2 && s.front() == L'"' && s.back() == L'"')
+        {
+            s.remove_prefix(1);
+            s.remove_suffix(1);
+        }
+        return s;
+    }
+
     size_t findEnvBegin(nonstd::wstring_view s)
     {
         bool in = false;
@@ -161,52 +171,58 @@ namespace {
         }
         else if (isFirstCommand(params, p))
         {
-            if (s.find('\\') == std::wstring::npos)
+            const wchar_t* pName = PathFindName(s[0] == '"' ? s.c_str() + 1 : s.c_str());
+            *i = pName - s.c_str();
+
+            if (*i == 0)
             {
-                *i = 0;
                 filter(all, s, internal_cmds);
                 append(all, findPath(s));
                 append(all, findAlias(s));
             }
             else
             {
-                const wchar_t* pName = PathFindName(s[0] == '"' ? s.c_str() + 1 : s.c_str());
-                *i = pName - s.c_str();
                 append(all, findExeFiles(s));
             }
-            //append(all, findFiles(s + L"*", false));
         }
         else
         {
             const std::vector<nonstd::wstring_view>::const_iterator f = getFirstCommand(params, p);
+            const std::wstring sfirst = str(unquote(*f));
+            const wchar_t* pFirstName = PathFindName(sfirst.c_str());
+            const nonstd::wstring_view first(pFirstName);
 
             const wchar_t* pName = PathFindName(s[0] == '"' ? s.c_str() + 1 : s.c_str());
             *i = pName - s.c_str();
 
             // TODO copy and adjust *f to point to file name
 
-            if (f->compare(L"alias") == 0 || f->compare(L"alias.bat") == 0)
+            if (p > f && *(p - 1) == L">" || *(p - 1) == L"<")
+            {
+                append(all, findFiles(s + L"*", FindFilesE::All));
+            }
+            else if (first.compare(L"alias") == 0 || first.compare(L"alias.bat") == 0)
             {
                 if (std::distance(f, p) == 1)
                     append(all, findAlias(s));
                 else
                     append(all, findFiles(s + L"*", FindFilesE::All));
             }
-            else if (f->compare(L"where") == 0 || f->compare(L"where.exe") == 0)
+            else if (first.compare(L"where") == 0 || first.compare(L"where.exe") == 0)
             {
                 if (std::distance(f, p) == 1)   // TODO Skip over options
                     append(all, findPath(s));
                 else
                     append(all, findFiles(s + L"*", FindFilesE::All));
             }
-            else if (f->compare(L"git") == 0 || f->compare(L"git.exe") == 0)
+            else if (first.compare(L"git") == 0 || first.compare(L"git.exe") == 0)
             {
                 if (std::distance(f, p) == 1)   // TODO Skip over options
                     filter(all, s, git_cmds);
                 else
                     append(all, findFiles(s + L"*", FindFilesE::All));
             }
-            else if (f->compare(L"reg") == 0 || f->compare(L"reg.exe") == 0)
+            else if (first.compare(L"reg") == 0 || first.compare(L"reg.exe") == 0)
             {
                 if (std::distance(f, p) == 1)
                     filter(all, s, reg_cmds);
@@ -220,7 +236,7 @@ namespace {
                 FindFilesE filter = FindFilesE::All;
                 for (const wchar_t* w : dir_only)
                 {
-                    if (f->compare(w) == 0)
+                    if (first.compare(w) == 0)
                     {
                         filter = FindFilesE::DirOnly;
                         break;
