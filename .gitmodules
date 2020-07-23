@@ -1,3 +1,4 @@
 [submodule "minhook"]
 	path = minhook
-	url = https://github.com/AeonLucid/minhook.git
+	url = https://github.com/hauzer/minhook.git
+	branch = VC16
