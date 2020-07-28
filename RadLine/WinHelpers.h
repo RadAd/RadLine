@@ -19,6 +19,7 @@ inline bool Match(const std::wstring& s, const wchar_t* p)
     return Match(s, p, wcslen(p));
 }
 
+// TODO Replace with PathFindFileName from shlwapi.h
 inline const wchar_t* PathFindName(const wchar_t* pFullName)
 {
     const wchar_t* pName = nullptr;
@@ -29,6 +30,26 @@ inline const wchar_t* PathFindName(const wchar_t* pFullName)
             pName = t;
     }
     return pName ? pName + 1 : pFullName;
+}
+
+inline char* PathFindName(char* pFullName)
+{
+    char* pName = nullptr;
+    for (char* f = "\\/:"; *f != L'\0'; ++f)
+    {
+        char* t = strrchr(pFullName, *f);
+        if (t > pName)
+            pName = t;
+    }
+    return pName ? pName + 1 : pFullName;
+}
+
+inline BOOL FileExists(LPCSTR szPath)
+{
+    DWORD dwAttrib = GetFileAttributesA(szPath);
+
+    return (dwAttrib != INVALID_FILE_ATTRIBUTES &&
+        !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
 template <size_t size>

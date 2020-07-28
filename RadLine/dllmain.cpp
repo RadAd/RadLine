@@ -6,11 +6,15 @@
 
 // TODO Detect if already loaded
 
-BOOL APIENTRY DllMain(HMODULE /*hModule*/,
+HMODULE g_hModule = NULL;
+
+BOOL APIENTRY DllMain(HMODULE hModule,
     DWORD  ul_reason_for_call,
     LPVOID /*lpReserved*/
 )
 {
+    g_hModule = hModule;
+
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:

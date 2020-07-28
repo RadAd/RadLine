@@ -4,12 +4,18 @@
 #undef min
 #undef max
 
+#include <shlwapi.h>
+
 #include <vector>
 #include <algorithm>
 #include <cctype>
 
 #include "bufstring.h"
 #include "WinHelpers.h"
+#include "Debug.h"
+#include "LuaUtils.h"
+
+extern HMODULE g_hModule;
 
 namespace {
     std::wstring str(nonstd::wstring_view s)
@@ -157,12 +163,149 @@ namespace {
         }
     }
 
-    std::vector<std::wstring> findPotential(const std::vector<nonstd::wstring_view>& params, std::vector<nonstd::wstring_view>::const_iterator p, const std::wstring& s, std::size_t* i)
+    int l_DebugOut(lua_State* lua)
+    {
+        OutputDebugStringA(luaL_checklstring(lua, -1, nullptr));
+        return 0;  /* number of results */
+    }
+
+    int l_GetEnv(lua_State* lua)
+    {
+        const char* s = luaL_checklstring(lua, -1, nullptr);
+        if (_stricmp(s, "CD") == 0)
+        {
+            char FullNameS[MAX_PATH];
+            GetCurrentDirectoryA(ARRAYSIZE(FullNameS), FullNameS);
+            lua_pushstring(lua, FullNameS);
+        }
+        else
+        {
+            char v[1024] = "";
+            GetEnvironmentVariableA(s, v, ARRAYSIZE(v));
+            lua_pushstring(lua, v);
+        }
+        return 1;  /* number of results */
+    }
+
+    int l_FindFiles(lua_State* lua)
+    {
+        FindFilesE filter = static_cast<FindFilesE>(luaL_checkinteger(lua, -1));
+        std::wstring s = From_utf8(luaL_checklstring(lua, -2, nullptr));
+        std::vector<std::wstring> f = findFiles(s, filter);
+        LuaPush(lua, f);
+        return 1;  /* number of results */
+    }
+
+    int l_FindEnv(lua_State* lua)
+    {
+        std::wstring s = From_utf8(luaL_checklstring(lua, -1, nullptr));
+        std::vector<std::wstring> f = findEnv(s);
+        LuaPush(lua, f);
+        return 1;  /* number of results */
+    }
+
+    int l_FindAlias(lua_State* lua)
+    {
+        std::wstring s = From_utf8(luaL_checklstring(lua, -1, nullptr));
+        std::vector<std::wstring> f = findAlias(s);
+        LuaPush(lua, f);
+        return 1;  /* number of results */
+    }
+
+    int l_FindRegKey(lua_State* lua)
+    {
+        std::wstring s = From_utf8(luaL_checklstring(lua, -1, nullptr));
+        std::vector<std::wstring> f = findRegKey(s);
+        LuaPush(lua, f);
+        return 1;  /* number of results */
+    }
+
+    std::vector<std::wstring> findPotential(const std::vector<nonstd::wstring_view>& params, std::vector<nonstd::wstring_view>::const_iterator p, const std::wstring& s, std::size_t* i, std::wstring& msg)
     {
         // TODO Handle quotes already on params
-
         std::vector<std::wstring> all;
 
+#if 1
+        std::unique_ptr<lua_State, LuaCloser> L(luaL_newstate());
+        luaL_openlibs(L.get());
+
+        lua_pushcfunction(L.get(), l_DebugOut);
+        lua_setglobal(L.get(), "DebugOut");
+
+        lua_pushcfunction(L.get(), l_GetEnv);
+        lua_setglobal(L.get(), "GetEnv");
+
+        lua_pushcfunction(L.get(), l_FindFiles);
+        lua_setglobal(L.get(), "FindFiles");
+
+        lua_pushcfunction(L.get(), l_FindEnv);
+        lua_setglobal(L.get(), "FindEnv");
+
+        lua_pushcfunction(L.get(), l_FindAlias);
+        lua_setglobal(L.get(), "FindAlias");
+
+        lua_pushcfunction(L.get(), l_FindRegKey);
+        lua_setglobal(L.get(), "FindRegKey");
+
+        char strFile[MAX_PATH];
+        GetModuleFileNameA(g_hModule, strFile, ARRAYSIZE(strFile));
+        char* const pFileName = PathFindName(strFile);
+        const rsize_t strFileLen = ARRAYSIZE(strFile) - (pFileName - strFile);
+
+        const char* files[] = {
+            "RadLine.lua",
+#ifdef _DEBUG
+            "..\\..\\RadLine.lua",
+#endif
+            "UserRadLine.lua",
+#ifdef _DEBUG
+            "..\\..\\UserRadLine.lua",
+#endif
+        };
+
+        for (const char* f : files)
+        {
+            strcpy_s(pFileName, strFileLen, f);
+            if (FileExists(strFile))
+            {
+                if (luaL_dofile(L.get(), strFile) != LUA_OK)
+                {
+                    /*std::wstring*/ msg = LuaPopString(L.get());
+                    DebugOut(L"RadLine %s\n", msg.c_str());
+                    MessageBox(NULL, msg.c_str(), L"RadLine", MB_OK | MB_ICONERROR);
+                }
+            }
+            assert(lua_gettop(L.get()) == 0);
+        }
+
+        //int fi = 0;
+        //int di = 0;
+        if (lua_getglobal(L.get(), "FindPotential") != LUA_TFUNCTION)
+        {
+            /*std::wstring*/ msg = L"FindPotential is not a function";
+            //DebugOut(L"RadLine %s\n", msg.c_str());
+            //MessageBox(NULL, msg.c_str(), L"RadLine", MB_OK | MB_ICONERROR);
+            lua_pop(L.get(), 1);
+        }
+        else if (//fi = lua_absindex(L.get(), 0),
+                LuaPush(L.get(), params),
+                lua_pushinteger(L.get(), std::distance(params.begin(), p) + 1),
+                lua_pushinteger(L.get(), s.length()),
+                //di = lua_absindex(L.get(), 0),
+                lua_pcall(L.get(), 3, 2, 0) != LUA_OK)
+        {
+            /*std::wstring*/ msg = LuaPopString(L.get());
+            //DebugOut(L"pcall %s\n", msg.c_str());
+            //MessageBox(NULL, msg.c_str(), L"RadLine", MB_OK | MB_ICONERROR);
+        }
+        else
+        {
+            *i = (size_t) (lua_isnil(L.get(), -1) ? (lua_pop(L.get(), 1), 0) : LuaPopInteger(L.get()) - 1);
+            std::vector<std::wstring> vs = LuaPopVectorOfStrings(L.get());
+            append(all, vs);
+        }
+        assert(lua_gettop(L.get()) == 0);
+#else
         size_t envBegin = findEnvBegin(s);
         if (envBegin != std::wstring::npos)
         {
@@ -246,6 +389,7 @@ namespace {
                 append(all, findFiles(s + L"*", filter));
             }
         }
+#endif
 
         return all;
     }
@@ -340,6 +484,41 @@ SHORT DisplayPotentials(const HANDLE hConsoleOutput, const std::vector<std::wstr
     return scroll;
 }
 
+SHORT DisplayMessage(const HANDLE hConsoleOutput, const std::wstring& msg, const COORD size, SHORT below, Extra* extra)
+{
+    SHORT req_lines = 1;
+    size_t l = 0;
+    size_t i = msg.find(L'\n');
+    while (i != std::wstring::npos)
+    {
+        size_t len = i - l;
+        req_lines += (SHORT) (len / size.X);
+        l = i;
+        i = msg.find(L'\n', i);
+    }
+    {
+        size_t len = msg.length() - l;
+        req_lines += (SHORT)(len / size.X);
+    }
+
+    SHORT scroll = 0;
+    COORD pos = GetConsoleCursorPosition(hConsoleOutput);
+
+    extra->length = req_lines;
+    scroll -= MakeRoom(hConsoleOutput, extra->length);
+    pos.Y += scroll;
+    extra->line = pos.Y + below;
+
+    COORD newpos = { 0, extra->line };
+    SetConsoleCursorPosition(hConsoleOutput, newpos);
+
+    DWORD written = 0;
+    WriteConsoleW(hConsoleOutput, msg.c_str(), (DWORD) msg.length(), &written, nullptr);
+
+    SetConsoleCursorPosition(hConsoleOutput, pos);
+    return scroll;
+}
+
 void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* extra, const COORD size)
 {
     std::vector<nonstd::wstring_view> params = findParam(nonstd::wstring_view(line.begin(), line.length()));
@@ -350,15 +529,21 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
 
     const std::wstring substr = p != params.end() && (line.begin() + *i) >= p->begin()
         //? line.substr(p->begin() - line.begin(), std::min(const_cast<const wchar_t*>(line.begin() + *i), p->end()) - p->begin())
-        ? str(nonstd::wstring_view(p->begin(), std::min(p->begin() - line.begin() + *i, p->length())))
+        ? str(nonstd::wstring_view(p->begin(), std::min(*i - (p->begin() - line.begin()), p->length())))
         : std::wstring();
 
+    std::wstring msg;
     std::size_t rp = 0;
-    const std::vector<std::wstring> list = findPotential(params, p, substr, &rp);
+    const std::vector<std::wstring> list = findPotential(params, p, substr, &rp, msg);
 
-    const COORD posstart = Add(GetConsoleCursorPosition(hConsoleOutput), - (SHORT) *i, size.X);
+    const COORD posstart = Add(GetConsoleCursorPosition(hConsoleOutput), -(SHORT)*i, size.X);
 
-    if (!list.empty())
+    if (!msg.empty())
+    {
+        SHORT below = (SHORT)(line.length() / size.X - *i / size.X + 1);
+        DisplayMessage(hConsoleOutput, msg, size, below, extra);
+    }
+    else if (!list.empty())
     {
         const std::wstring match = getLongestMatch(list);
         const wchar_t* refresh = line.end();
@@ -374,7 +559,7 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
                 line.insert(r.begin(), L'"');
                 refresh = std::min(refresh, r.begin());
                 r = nonstd::wstring_view(r.begin() + 1, r.length());
-                ++*i;
+                ++* i;
             }
 
             if (substr.compare(rp, std::wstring::npos, match) != 0)
@@ -395,45 +580,46 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
                 line.insert(r.end(), L'\"');
                 refresh = std::min(refresh, r.end());
                 r = nonstd::wstring_view(r.begin(), r.length() + 1);
-                ++*i;
+                ++* i;
             }
 
             if (list.size() == 1 && match.back() != L'\\' && *i == line.length())
             {
                 refresh = std::min(refresh, const_cast<const wchar_t*>(line.end()));
                 line += L' ';
-                ++*i;
+                ++* i;
             }
 
             {
-                const COORD pos = Add(posstart, (SHORT) (refresh - line.begin()), size.X);
+                const COORD pos = Add(posstart, (SHORT)(refresh - line.begin()), size.X);
                 SetConsoleCursorPosition(hConsoleOutput, pos);
                 EasyWriteString(hConsoleOutput, refresh);
                 // TODO This could cause the screen to scroll shifting posstart
             }
-            const int scroll = std::max(Add(posstart, (SHORT) line.length(), size.X).Y - size.Y + 1, 0);
-            const COORD newposstart = Add(posstart, (SHORT) -scroll * size.X, size.X);
+            const int scroll = std::max(Add(posstart, (SHORT)line.length(), size.X).Y - size.Y + 1, 0);
+            const COORD newposstart = Add(posstart, (SHORT)-scroll * size.X, size.X);
             {
-                const COORD pos = Add(newposstart, (SHORT) *i, size.X);
+                const COORD pos = Add(newposstart, (SHORT)*i, size.X);
                 SetConsoleCursorPosition(hConsoleOutput, pos);
             }
 
-            assert(GetConsoleCursorPosition(hConsoleOutput) == Add(newposstart, (SHORT) *i, size.X));
+            assert(GetConsoleCursorPosition(hConsoleOutput) == Add(newposstart, (SHORT)*i, size.X));
 #if _DEBUG
             std::vector<WCHAR> buf(line.length() + 1);
             DWORD read = 0;
-            ReadConsoleOutputCharacterW(hConsoleOutput, buf.data(), (DWORD) buf.size(), newposstart, &read);
+            ReadConsoleOutputCharacterW(hConsoleOutput, buf.data(), (DWORD)buf.size(), newposstart, &read);
             buf[line.length()] = L'\0';
             assert(nonstd::wstring_view(line.begin(), line.length()).compare(buf.data()) == 0);
 #endif
         }
         else
         {
-            SHORT below = (SHORT) (line.length() / size.X - *i / size.X + 1);
+            SHORT below = (SHORT)(line.length() / size.X - *i / size.X + 1);
             DisplayPotentials(hConsoleOutput, list, size, below, extra);
         }
     }
 }
+
 
 size_t Complete(const HANDLE hConsoleOutput, wchar_t* pStr, size_t nSize, size_t nNumberOfCharsRead, size_t i, Extra* extra, const COORD size)
 {
