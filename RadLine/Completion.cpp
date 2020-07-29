@@ -18,6 +18,40 @@
 extern HMODULE g_hModule;
 
 namespace {
+    nonstd::wstring_view substr(nonstd::wstring_view s, nonstd::wstring_view::const_iterator b, nonstd::wstring_view::const_iterator e)
+    {
+        assert(e >= b);
+        return s.substr(b - s.begin(), e - b);
+    }
+
+    struct string_range
+    {
+        nonstd::wstring_view::const_iterator begin;
+        nonstd::wstring_view::const_iterator end;
+
+        auto length() const
+        {
+            return end - begin;
+        }
+
+        auto front() const
+        {
+            assert(end > begin);
+            return *begin;
+        }
+
+        auto back() const
+        {
+            assert(end > begin);
+            return *(end - 1);
+        }
+
+        auto substr(nonstd::wstring_view s) const
+        {
+            return ::substr(s, begin, end);
+        }
+    };
+
     std::wstring str(nonstd::wstring_view s)
     {
         return std::wstring(s.begin(), s.end());
@@ -55,15 +89,15 @@ namespace {
             || s.compare(L"||") == 0;
     }
 
-    bool isFirstCommand(const std::vector<nonstd::wstring_view>& params, std::vector<nonstd::wstring_view>::const_iterator p)
+    bool isFirstCommand(nonstd::wstring_view linev, const std::vector<string_range>& params, std::vector<string_range>::const_iterator p)
     {
-        return p == params.begin() || isCommandSeparator(*(p - 1));
+        return p == params.begin() || isCommandSeparator((p - 1)->substr(linev));
     }
 
-    std::vector<nonstd::wstring_view>::const_iterator getFirstCommand(const std::vector<nonstd::wstring_view>& params, std::vector<nonstd::wstring_view>::const_iterator p)
+    std::vector<string_range>::const_iterator getFirstCommand(nonstd::wstring_view linev, const std::vector<string_range>& params, std::vector<string_range>::const_iterator p)
     {
-        std::vector<nonstd::wstring_view>::const_iterator f = p;
-        while (f != params.begin() && !isCommandSeparator(*(f - 1)))
+        std::vector<string_range>::const_iterator f = p;
+        while (f != params.begin() && !isCommandSeparator((f - 1)->substr(linev)))
             --f;
         return f;
     }
@@ -93,9 +127,21 @@ namespace {
     inline bool isWhiteSpace(wchar_t c) { return wcschr(ws, c) != nullptr; }
     inline bool isDelim(wchar_t c) { return wcschr(delim2, c) != nullptr; }
 
-    std::vector<nonstd::wstring_view> findParam(nonstd::wstring_view line)
+    inline void LuaPush(lua_State* lua, nonstd::wstring_view s, const std::vector<string_range>& v)
     {
-        std::vector<nonstd::wstring_view> rs;
+        lua_createtable(lua, (int)v.size(), 0);
+        int i = 1;
+        for (string_range w : v)
+        {
+            LuaPush(lua, substr(s, w.begin, w.end));
+            lua_rawseti(lua, -2, i);
+            ++i;
+        }
+    }
+
+    std::vector<string_range> findParam(nonstd::wstring_view line)
+    {
+        std::vector<string_range> rs;
         nonstd::wstring_view::const_iterator begin = line.begin();
         while (begin < line.end())
         {
@@ -126,7 +172,7 @@ namespace {
                         ++end;
                     }
                 }
-                rs.push_back(nonstd::wstring_view(begin, end - begin));
+                rs.push_back({ begin, end });
                 begin = end;
             }
         }
@@ -220,7 +266,7 @@ namespace {
         return 1;  /* number of results */
     }
 
-    std::vector<std::wstring> findPotential(const std::vector<nonstd::wstring_view>& params, std::vector<nonstd::wstring_view>::const_iterator p, const std::wstring& s, std::size_t* i, std::wstring& msg)
+    std::vector<std::wstring> findPotential(nonstd::wstring_view linev, const std::vector<string_range>& params, std::vector<string_range>::const_iterator p, const std::wstring& s, std::size_t* i, std::wstring& msg)
     {
         // TODO Handle quotes already on params
         std::vector<std::wstring> all;
@@ -288,7 +334,7 @@ namespace {
             lua_pop(L.get(), 1);
         }
         else if (//fi = lua_absindex(L.get(), 0),
-                LuaPush(L.get(), params),
+                LuaPush(L.get(), linev, params),
                 lua_pushinteger(L.get(), std::distance(params.begin(), p) + 1),
                 lua_pushinteger(L.get(), s.length()),
                 //di = lua_absindex(L.get(), 0),
@@ -312,7 +358,7 @@ namespace {
             *i = envBegin;
             append(all, findEnv(s.substr(envBegin + 1)));
         }
-        else if (isFirstCommand(params, p))
+        else if (isFirstCommand(linev, params, p))
         {
             const wchar_t* pName = PathFindName(s[0] == '"' ? s.c_str() + 1 : s.c_str());
             *i = pName - s.c_str();
@@ -330,8 +376,8 @@ namespace {
         }
         else
         {
-            const std::vector<nonstd::wstring_view>::const_iterator f = getFirstCommand(params, p);
-            const std::wstring sfirst = str(unquote(*f));
+            const std::vector<string_range>::const_iterator f = getFirstCommand(linev, params, p);
+            const std::wstring sfirst = str(unquote(f->substr(linev)));
             const wchar_t* pFirstName = PathFindName(sfirst.c_str());
             const nonstd::wstring_view first(pFirstName);
 
@@ -340,7 +386,7 @@ namespace {
 
             // TODO copy and adjust *f to point to file name
 
-            if (p > f && *(p - 1) == L">" || *(p - 1) == L"<")
+            if (p > f && (p - 1)->substr(linev) == L">" || (p - 1)->substr(linev) == L"<")
             {
                 append(all, findFiles(s + L"*", FindFilesE::All));
             }
@@ -521,20 +567,22 @@ SHORT DisplayMessage(const HANDLE hConsoleOutput, const std::wstring& msg, const
 
 void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* extra, const COORD size)
 {
-    std::vector<nonstd::wstring_view> params = findParam(nonstd::wstring_view(line.begin(), line.length()));
+    nonstd::wstring_view linev(line.begin(), line.length());
+    std::vector<string_range> params = findParam(linev);
 
-    std::vector<nonstd::wstring_view>::const_iterator p = params.begin();
-    while (p != params.end() && (line.begin() + *i) > p->end())
+    std::vector<string_range>::const_iterator p = params.begin();
+    while (p != params.end() && (line.begin() + *i) > p->end)
         ++p;
 
-    const std::wstring substr = p != params.end() && (line.begin() + *i) >= p->begin()
+    const std::wstring substr = p != params.end() && (line.begin() + *i) >= p->begin
         //? line.substr(p->begin() - line.begin(), std::min(const_cast<const wchar_t*>(line.begin() + *i), p->end()) - p->begin())
-        ? str(nonstd::wstring_view(p->begin(), std::min(*i - (p->begin() - line.begin()), p->length())))
+        //? str(nonstd::wstring_view(p->begin, std::min(*i - (p->begin - line.begin()), p->length())))
+        ? str(::substr(linev, p->begin, std::min(linev.begin() + *i, p->end)))
         : std::wstring();
 
     std::wstring msg;
     std::size_t rp = 0;
-    const std::vector<std::wstring> list = findPotential(params, p, substr, &rp, msg);
+    const std::vector<std::wstring> list = findPotential(linev, params, p, substr, &rp, msg);
 
     const COORD posstart = Add(GetConsoleCursorPosition(hConsoleOutput), -(SHORT)*i, size.X);
 
@@ -546,40 +594,40 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
     else if (!list.empty())
     {
         const std::wstring match = getLongestMatch(list);
-        const wchar_t* refresh = line.end();
+        nonstd::wstring_view::const_iterator refresh = line.end();
 
         if (match.length() > (substr.length() - rp) || list.size() == 1)
         {
-            nonstd::wstring_view r = p != params.end() ? *p : nonstd::wstring_view(line.end(), 0);
+            string_range r = p != params.end() ? *p : string_range({ line.end(), line.end() });
 
             // TODO fix up handling inserting quotes
-            bool openquote = r.begin() < line.end() && r.front() != L'"' && match.find(L' ') != std::wstring::npos;
+            bool openquote = r.begin < line.end() && r.front() != L'"' && match.find(L' ') != std::wstring::npos;
             if (openquote)
             {
-                line.insert(r.begin(), L'"');
-                refresh = std::min(refresh, r.begin());
-                r = nonstd::wstring_view(r.begin() + 1, r.length());
+                line.insert(r.begin, L'"');
+                refresh = std::min(refresh, r.begin);
+                ++r.begin;
                 ++* i;
             }
 
             if (substr.compare(rp, std::wstring::npos, match) != 0)
             {
                 // TODO Make sure replace doesn't go over nSize
-                nonstd::wstring_view nr = r;
-                nr.remove_prefix(rp);
-                line.replace(nr.begin(), nr.length(), match);
-                refresh = std::min(refresh, nr.begin());
+                string_range nr = r;
+                nr.begin += rp;
+                line.replace(nr.begin, nr.length(), match);
+                refresh = std::min(refresh, nr.begin);
                 *i -= nr.length();
                 *i += match.length();
-                r = nonstd::wstring_view(r.begin(), rp + match.length());
+                r.end = nr.begin + match.length();
             }
 
             bool closequote = (openquote || r.front() == L'"') && r.back() != L'"';
             if (closequote)
             {
-                line.insert(r.end(), L'\"');
-                refresh = std::min(refresh, r.end());
-                r = nonstd::wstring_view(r.begin(), r.length() + 1);
+                line.insert(r.end, L'\"');
+                refresh = std::min(refresh, r.end);
+                ++r.end;
                 ++* i;
             }
 
@@ -654,20 +702,21 @@ void CleanUpExtra(const HANDLE hConsoleOutput, Extra* extra)
 
 void ExpandAlias(bufstring& line)
 {
-    std::vector<nonstd::wstring_view> params = findParam(nonstd::wstring_view(line.begin(), line.length()));
+    nonstd::wstring_view linev(line.begin(), line.length());
+    std::vector<string_range> params = findParam(linev);
     if (params.empty())
         return;
 
     // TODO Repeat for all alias ie use isFirstCommand
 
-    std::vector<nonstd::wstring_view>::iterator pb = params.begin();
-    std::wstring ae = getAlias(str(*pb));
+    std::vector<string_range>::iterator pb = params.begin();
+    std::wstring ae = getAlias(str(pb->substr(linev)));
     if (!ae.empty())
     {
-        std::vector<nonstd::wstring_view>::iterator pe = pb;
+        std::vector<string_range>::iterator pe = pb;
         if (pe != params.end())
         {
-            while ((pe + 1) != params.end() && !isCommandSeparator(*(pe + 1)))
+            while ((pe + 1) != params.end() && !isCommandSeparator((pe + 1)->substr(linev)))
                 ++pe;
         }
 
@@ -696,7 +745,7 @@ void ExpandAlias(bufstring& line)
                         int j = c - L'0';
                         std::wstring s;
                         if (std::distance(params.begin(), pb) + j <= std::distance(params.begin(), pe))
-                            s = str(*(pb + j));
+                            s = str((pb + j)->substr(linev));
                         ae.replace(i - 1, 2, s);
                         i += s.length() - 1;
                     }
@@ -705,7 +754,7 @@ void ExpandAlias(bufstring& line)
                     {
                         std::wstring s;
                         if ((pb + 1) <= pe)
-                            s = str(nonstd::wstring_view((pb + 1)->begin(), pe->end() - (pb + 1)->begin()));
+                            s = str(substr(linev, (pb + 1)->begin, pe->end));
                         ae.replace(i - 1, 2, s);
                         i += s.length() - 1;
 
@@ -720,6 +769,6 @@ void ExpandAlias(bufstring& line)
                 break;
         }
 
-        line.replace(pb->begin(), pe->length(), ae);
+        line.replace(pb->begin, pe->length(), ae);
     }
 }
