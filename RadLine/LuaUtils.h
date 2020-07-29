@@ -27,26 +27,44 @@ void check(bool b, const char* msg)
 
 inline std::wstring From_utf8(const std::string& str)
 {
+#if 0
     using convert_typeX = std::codecvt_utf8<wchar_t>;
     std::wstring_convert<convert_typeX, wchar_t> converterX;
 
     return converterX.from_bytes(str);
+#else
+    wchar_t res[1024];
+    int len = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), (int) str.length(), res, ARRAYSIZE(res));
+    return std::wstring(res, len);
+#endif
 }
 
 inline std::string To_utf8(const std::wstring& wstr)
 {
+#if 0
     using convert_typeX = std::codecvt_utf8<wchar_t>;
     std::wstring_convert<convert_typeX, wchar_t> converterX;
 
     return converterX.to_bytes(wstr);
+#else
+    char res[1024];
+    int len = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int) wstr.length(), res, ARRAYSIZE(res), nullptr, nullptr);
+    return std::string(res, len);
+#endif
 }
 
 inline std::string To_utf8(const nonstd::wstring_view wstr)
 {
+#if 0
     using convert_typeX = std::codecvt_utf8<wchar_t>;
     std::wstring_convert<convert_typeX, wchar_t> converterX;
 
     return converterX.to_bytes(wstr.begin(), wstr.end());
+#else
+    char res[1024];
+    int len = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int) wstr.length(), res, ARRAYSIZE(res), nullptr, nullptr);
+    return std::string(res, len);
+#endif
 }
 
 inline void LuaPush(lua_State* lua, nonstd::wstring_view w)
