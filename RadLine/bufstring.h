@@ -21,12 +21,17 @@ public:
         assert(m_buf[m_len] == L'\0');
     }
 
+    typedef wchar_t* iterator;
+    typedef const wchar_t* const_iterator;
+
     wchar_t* c_str() { return m_buf; }
     const wchar_t* c_str() const { return m_buf; }
-    wchar_t* begin() { return m_buf; }
-    const wchar_t* begin() const { return m_buf; }
-    wchar_t* end() { return m_buf + m_len; }
-    const wchar_t* end() const { return m_buf + m_len; }
+    iterator begin() { return m_buf; }
+    const_iterator begin() const { return m_buf; }
+    const_iterator cbegin() const { return m_buf; }
+    iterator end() { return m_buf + m_len; }
+    const_iterator end() const { return m_buf + m_len; }
+    const_iterator cend() const { return m_buf + m_len; }
 
     void erase(size_t b)
     {
