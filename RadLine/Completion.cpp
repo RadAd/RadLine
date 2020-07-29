@@ -1,5 +1,4 @@
 #include "Completion.h"
-#include "string_view.h"
 
 #undef min
 #undef max
@@ -8,6 +7,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <string_view>
 #include <cctype>
 
 #include "bufstring.h"
@@ -18,18 +18,18 @@
 extern HMODULE g_hModule;
 
 namespace {
-    nonstd::wstring_view substr(nonstd::wstring_view s, nonstd::wstring_view::const_iterator b, nonstd::wstring_view::const_iterator e)
+    std::wstring_view substr(std::wstring_view s, std::wstring_view::const_iterator b, std::wstring_view::const_iterator e)
     {
         assert(e >= b);
         return s.substr(b - s.begin(), e - b);
     }
 
-    nonstd::wstring_view substr(const bufstring& s, bufstring::const_iterator b, bufstring::const_iterator e)
+    std::wstring_view substr(const bufstring& s, bufstring::const_iterator b, bufstring::const_iterator e)
     {
         assert(e >= b);
         assert(b >= s.begin() && b <= s.end());
         assert(e >= s.begin() && e <= s.end());
-        return nonstd::wstring_view(b, e - b);
+        return std::wstring_view(b, e - b);
     }
 
     struct string_range
@@ -60,12 +60,12 @@ namespace {
         }
     };
 
-    std::wstring str(nonstd::wstring_view s)
+    std::wstring str(std::wstring_view s)
     {
         return std::wstring(s.begin(), s.end());
     }
 
-    nonstd::wstring_view unquote(nonstd::wstring_view s)
+    std::wstring_view unquote(std::wstring_view s)
     {
         if (s.size() >= 2 && s.front() == L'"' && s.back() == L'"')
         {
@@ -75,7 +75,7 @@ namespace {
         return s;
     }
 
-    size_t findEnvBegin(nonstd::wstring_view s)
+    size_t findEnvBegin(std::wstring_view s)
     {
         bool in = false;
         for (size_t i = 0; i < s.length(); ++i)
@@ -89,7 +89,7 @@ namespace {
             return std::wstring::npos;
     }
 
-    bool isCommandSeparator(nonstd::wstring_view s)
+    bool isCommandSeparator(std::wstring_view s)
     {
         return s.compare(L"&") == 0
             || s.compare(L"|") == 0
@@ -387,7 +387,7 @@ namespace {
             const std::vector<string_range>::const_iterator f = getFirstCommand(line, params, p);
             const std::wstring sfirst = str(unquote(f->substr(line)));
             const wchar_t* pFirstName = PathFindName(sfirst.c_str());
-            const nonstd::wstring_view first(pFirstName);
+            const std::wstring_view first(pFirstName);
 
             const wchar_t* pName = PathFindName(s[0] == '"' ? s.c_str() + 1 : s.c_str());
             *i = pName - s.c_str();
@@ -583,7 +583,7 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
 
     const std::wstring substr = p != params.end() && (line.begin() + *i) >= p->begin
         //? line.substr(p->begin() - line.begin(), std::min(const_cast<const wchar_t*>(line.begin() + *i), p->end()) - p->begin())
-        //? str(nonstd::wstring_view(p->begin, std::min(*i - (p->begin - line.begin()), p->length())))
+        //? str(std::wstring_view(p->begin, std::min(*i - (p->begin - line.begin()), p->length())))
         ? str(::substr(line, p->begin, std::min(line.begin() + *i, p->end)))
         : std::wstring();
 
@@ -664,7 +664,7 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
             DWORD read = 0;
             ReadConsoleOutputCharacterW(hConsoleOutput, buf.data(), (DWORD)buf.size(), newposstart, &read);
             buf[line.length()] = L'\0';
-            assert(nonstd::wstring_view(line.begin(), line.length()).compare(buf.data()) == 0);
+            assert(std::wstring_view(line.begin(), line.length()).compare(buf.data()) == 0);
 #endif
         }
         else

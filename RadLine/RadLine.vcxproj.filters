@@ -15,7 +15,6 @@
     <ClInclude Include="Debug.h" />
     <ClInclude Include="RadLine.h" />
     <ClInclude Include="RadReadConsole.h" />
-    <ClInclude Include="string_view.h" />
     <ClInclude Include="LuaUtils.h" />
   </ItemGroup>
 </Project>

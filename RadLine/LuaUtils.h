@@ -53,7 +53,7 @@ inline std::string To_utf8(const std::wstring& wstr)
 #endif
 }
 
-inline std::string To_utf8(const nonstd::wstring_view wstr)
+inline std::string To_utf8(const std::wstring_view wstr)
 {
 #if 0
     using convert_typeX = std::codecvt_utf8<wchar_t>;
@@ -67,7 +67,7 @@ inline std::string To_utf8(const nonstd::wstring_view wstr)
 #endif
 }
 
-inline void LuaPush(lua_State* lua, nonstd::wstring_view w)
+inline void LuaPush(lua_State* lua, std::wstring_view w)
 {
     std::string s(To_utf8(w));
     lua_pushstring(lua, s.c_str());
@@ -79,11 +79,11 @@ inline void LuaPush(lua_State* lua, const std::wstring& w)
     lua_pushstring(lua, s.c_str());
 }
 
-inline void LuaPush(lua_State* lua, const std::vector<nonstd::wstring_view>& v)
+inline void LuaPush(lua_State* lua, const std::vector<std::wstring_view>& v)
 {
     lua_createtable(lua, (int) v.size(), 0);
     int i = 1;
-    for (nonstd::wstring_view w : v)
+    for (std::wstring_view w : v)
     {
         LuaPush(lua, w);
         lua_rawseti(lua, -2, i);
