@@ -18,12 +18,6 @@
 extern HMODULE g_hModule;
 
 namespace {
-    std::wstring_view substr(std::wstring_view s, std::wstring_view::const_iterator b, std::wstring_view::const_iterator e)
-    {
-        assert(e >= b);
-        return s.substr(b - s.begin(), e - b);
-    }
-
     std::wstring_view substr(const bufstring& s, bufstring::const_iterator b, bufstring::const_iterator e)
     {
         assert(e >= b);
@@ -62,7 +56,7 @@ namespace {
 
     std::wstring str(std::wstring_view s)
     {
-        return std::wstring(s.begin(), s.end());
+        return std::wstring(s);
     }
 
     std::wstring_view unquote(std::wstring_view s)
@@ -141,7 +135,7 @@ namespace {
         int i = 1;
         for (string_range w : v)
         {
-            LuaPush(lua, substr(s, w.begin, w.end));
+            LuaPush(lua, w.substr(s));
             lua_rawseti(lua, -2, i);
             ++i;
         }
@@ -325,8 +319,9 @@ namespace {
                 if (luaL_dofile(L.get(), strFile) != LUA_OK)
                 {
                     /*std::wstring*/ msg = LuaPopString(L.get());
-                    DebugOut(L"RadLine %s\n", msg.c_str());
-                    MessageBox(NULL, msg.c_str(), L"RadLine", MB_OK | MB_ICONERROR);
+                    //DebugOut(L"RadLine %s\n", msg.c_str());
+                    //MessageBox(NULL, msg.c_str(), L"RadLine", MB_OK | MB_ICONERROR);
+                    return all;
                 }
             }
             assert(lua_gettop(L.get()) == 0);
@@ -674,7 +669,6 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
         }
     }
 }
-
 
 size_t Complete(const HANDLE hConsoleOutput, wchar_t* pStr, size_t nSize, size_t nNumberOfCharsRead, size_t i, Extra* extra, const COORD size)
 {
