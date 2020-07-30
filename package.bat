@@ -1,7 +1,12 @@
 @echo off
 setlocal
+call :package x64
+call :package Win32
+pause
+goto :eof
 
-set PLATFORM=x64
+:package
+set PLATFORM=%1
 set ZIPFILE=%CD%\RadLine%PLATFORM%.zip
 del %ZIPFILE%
 call :add Bin\%PLATFORM%Release\RadLine.dll

@@ -135,6 +135,15 @@ function GetParam(params, p)
     local s = params[p] or ""
     local i = s:match'^.*()\\' -- Find last of '\'
     i = i and i + 1 or 1
+    if #s > 0 and s:sub(1, 1) == '"' then
+        s = s:sub(2)
+        if i == 1 then
+            i = i + 1
+        end
+    end
+    if #s > 0 and s:sub(#s, #s) == '"' then
+        s = s:sub(1, -2)
+    end
     return s, i
 end
 
@@ -164,12 +173,9 @@ setmetatable(command_fn, {
 })
 
 function FindPotential(params, p)
-    --DebugOut("p " .. p .. "\n")
-    --DebugOut("#params " .. #params .. "\n")
-
     local s,i = GetParam(params, p)
     local e = FindEnvBegin(s)
-    
+
     if e then
         return FindEnv(s:sub(e + 1)), e
     elseif p == 1 or command_sep[params[p - 1]] then

@@ -31,7 +31,7 @@ namespace {
         bufstring::iterator begin;
         bufstring::iterator end;
 
-        auto length() const
+        size_t length() const
         {
             return end - begin;
         }
@@ -51,6 +51,13 @@ namespace {
         auto substr(const bufstring& s) const
         {
             return ::substr(s, begin, end);
+        }
+
+        auto operator[](size_t i) const
+        {
+            assert(i >= 0);
+            assert(i < length());
+            return *(begin + i);
         }
     };
 
@@ -603,20 +610,35 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
             string_range r = p != params.end() ? *p : string_range({ line.end(), line.end() });
 
             // TODO fix up handling inserting quotes
-            bool openquote = r.begin < line.end() && r.front() != L'"' && match.find(L' ') != std::wstring::npos;
-            if (openquote)
+            bool openquote = false;
+            if (r.begin < line.end())
             {
-                line.insert(r.begin, L'"');
-                refresh = std::min(refresh, r.begin);
-                ++r.begin;
-                ++* i;
+                if (r.front() == L'"')
+                {
+                    openquote = true;
+                    ++r.begin;
+                    --rp;
+                }
+                else if (match.find(L' ') != std::wstring::npos)
+                {
+                    openquote = true;
+                    line.insert(r.begin, L'"');
+                    refresh = std::min(refresh, r.begin);
+                    ++r.begin;
+                    ++r.end;
+                    ++* i;
+                }
             }
+
+            bool removequote = rp > 0 && r[rp - 1] == L'"';
 
             if (substr.compare(rp, std::wstring::npos, match) != 0)
             {
                 // TODO Make sure replace doesn't go over nSize
                 string_range nr = r;
                 nr.begin += rp;
+                if (removequote)
+                    --nr.begin;
                 line.replace(nr.begin, nr.length(), match);
                 refresh = std::min(refresh, nr.begin);
                 *i -= nr.length();
@@ -624,20 +646,19 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
                 r.end = nr.begin + match.length();
             }
 
-            bool closequote = (openquote || r.front() == L'"') && r.back() != L'"';
+            bool closequote = openquote && r.back() != L'"';
             if (closequote)
             {
                 line.insert(r.end, L'\"');
                 refresh = std::min(refresh, r.end);
-                ++r.end;
-                ++* i;
+                ++*i;
             }
 
             if (list.size() == 1 && match.back() != L'\\' && *i == line.length())
             {
                 refresh = std::min(refresh, line.end());
                 line += L' ';
-                ++* i;
+                ++*i;
             }
 
             {
