@@ -230,14 +230,24 @@ namespace {
         if (_stricmp(s, "CD") == 0)
         {
             char FullNameS[MAX_PATH];
-            GetCurrentDirectoryA(ARRAYSIZE(FullNameS), FullNameS);
+            if (GetCurrentDirectoryA(ARRAYSIZE(FullNameS), FullNameS) == 0)
+                luaL_error(lua, "GetCurrentDirectory failed %d\n", GetLastError());
             lua_pushstring(lua, FullNameS);
         }
         else
         {
-            char v[1024] = "";
-            GetEnvironmentVariableA(s, v, ARRAYSIZE(v));
-            lua_pushstring(lua, v);
+            static std::vector<char> v(1024, 0);
+            DWORD ret = GetEnvironmentVariableA(s, v.data(), (DWORD) v.size());
+            if (ret == 0)
+                luaL_error(lua, "GetEnvironmentVariable failed %d\n", GetLastError());
+            else if (ret != ERROR_ENVVAR_NOT_FOUND)
+            {
+                v.resize((size_t) ret);
+                ret = GetEnvironmentVariableA(s, v.data(), (DWORD) v.size());
+                if (ret == 0)
+                    luaL_error(lua, "GetEnvironmentVariable failed %d\n", GetLastError());
+            }
+            lua_pushstring(lua, v.data());
         }
         return 1;  /* number of results */
     }
@@ -550,7 +560,7 @@ SHORT DisplayMessage(const HANDLE hConsoleOutput, const std::wstring& msg, const
         size_t len = i - l;
         req_lines += (SHORT) (len / size.X);
         l = i;
-        i = msg.find(L'\n', i);
+        i = msg.find(L'\n', i + 1);
     }
     {
         size_t len = msg.length() - l;

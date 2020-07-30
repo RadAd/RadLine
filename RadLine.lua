@@ -98,9 +98,9 @@ function FindExeFiles(s)
 end
 
 function FindPathExeFiles(s)
-    local pathext = split(GetEnv("PATH"), ";")
+    local path = split(GetEnv("PATH"), ";")
     local f = {}
-    for _,i in ipairs(pathext) do
+    for _,i in ipairs(path) do
         concat(f, FindExeFiles(i.."\\"..s))
     end
     return f
