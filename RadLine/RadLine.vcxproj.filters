@@ -16,5 +16,9 @@
     <ClInclude Include="RadLine.h" />
     <ClInclude Include="RadReadConsole.h" />
     <ClInclude Include="LuaUtils.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="RadLine.rc" />
   </ItemGroup>
 </Project>
