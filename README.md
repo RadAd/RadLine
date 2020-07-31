@@ -17,7 +17,7 @@ On startup the `RadLine.dll` replaces the `ReadConsole` function with its own. T
 Install
 =======
 
-To install download the zip and decompress to `%APPDATA%\Radsoft\RadLine`
+To install, download the zip and decompress to `%APPDATA%\Radsoft\RadLine`
 
 Add the following lines to your cmd startup script:
 ```
