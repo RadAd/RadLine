@@ -7,9 +7,11 @@
 
 #ifdef _UNICODE
 #define LOAD_LIBRARY        "LoadLibraryW"
+#define SET_DLL_DIRECTORY   "SetDllDirectoryW"
 #define GET_MODULE_HANDLE   "GetModuleHandleW"
 #else
 #define LOAD_LIBRARY        "LoadLibraryA"
+#define SET_DLL_DIRECTORY   "SetDllDirectoryA"
 #define GET_MODULE_HANDLE   "GetModuleHandleA"
 #endif
 
@@ -102,21 +104,53 @@ private:
 
 int _tmain(int argc, LPCTSTR* argv)
 {
-    if (argc != 3)
+    BOOL bSetDirectory = FALSE;
+    LPCTSTR strPid = nullptr;
+    LPCTSTR strLib = nullptr;
+
+    for (int argi = 1; argi < argc; ++argi)
     {
-        _putts(_T("RLoadDll <pid> <dll> - load a dll into a another process."));
+        LPCTSTR arg = argv[argi];
+        if (arg[0] == _T('/'))
+        {
+            if (_tccmp(arg, _T("/d")) == 0)
+                bSetDirectory = TRUE;
+            else
+                _ftprintf(stderr, _T("Unknown option: %s\n"), arg);
+        }
+        else if (strPid == nullptr)
+            strPid = arg;
+        else if (strLib == nullptr)
+            strLib = arg;
+        else
+            _ftprintf(stderr, _T("Too many parameters: %s\n"), arg);
+    }
+
+    if (strPid == nullptr || strLib == nullptr)
+    {
+        _putts(_T("RLoadDll [/d] <pid> <dll> - load a dll into a another process."));
+        _putts(_T("     /d - Set dll directory in order to load dependent dlls."));
         return 0;
     }
 
-    HANDLE hProcess = FindProcess(argv[1]);
-    TCHAR  szCurrentDir[_MAX_PATH];
-    GetCurrentDirectory(ARRAYSIZE(szCurrentDir), szCurrentDir);
+    HANDLE hProcess = FindProcess(strPid);
+
+    if (hProcess == NULL)
+    {
+        _ftprintf(stderr, _T("Process not found: %s\n"), strPid);
+        return EXIT_FAILURE;
+    }
+
     TCHAR  szLibPath[_MAX_PATH];    // module (including full path!);
-    PathCombine(szLibPath, szCurrentDir, argv[2]);
+    {
+        TCHAR  szCurrentDir[_MAX_PATH];
+        GetCurrentDirectory(ARRAYSIZE(szCurrentDir), szCurrentDir);
+        PathCombine(szLibPath, szCurrentDir, strLib);
+    }
 
     if (!PathFileExists(szLibPath))
     {
-        _ftprintf(stderr, _T("File not found: %s\n"), argv[2]);
+        _ftprintf(stderr, _T("File not found: %s\n"), strLib);
         return EXIT_FAILURE;
     }
 
@@ -128,6 +162,7 @@ int _tmain(int argc, LPCTSTR* argv)
     }
 
     if (WriteProcessMemory(hProcess, pLibRemote.get(), (void*) szLibPath, sizeof(szLibPath), NULL) == 0)
+    //if (WriteProcessMemory(hProcess, pLibRemote.get(), (void*)pFileName, 20, NULL) == 0)
     {
         _ftprintf(stderr, _T("Error: WriteProcessMemory 0x%08x\n"), GetLastError());
         return EXIT_FAILURE;
@@ -145,6 +180,40 @@ int _tmain(int argc, LPCTSTR* argv)
         return EXIT_FAILURE;
     }
 
+    if (bSetDirectory)
+    {
+        TCHAR* pFileName = PathFindFileName(szLibPath);
+
+        TCHAR bSave = _T('\0');
+        std::swap(bSave, *(pFileName - 1));
+
+        if (WriteProcessMemory(hProcess, pLibRemote.get(), (void*)szLibPath, sizeof(szLibPath), NULL) == 0)
+        {
+            _ftprintf(stderr, _T("Error: WriteProcessMemory 0x%08x\n"), GetLastError());
+            return EXIT_FAILURE;
+        }
+
+        DWORD bRet = FALSE;
+        if (!CallRemoteFunc(hProcess, SET_DLL_DIRECTORY, pLibRemote.get(), &bRet))
+        {
+            return EXIT_FAILURE;
+        }
+
+        if (!bRet)
+        {
+            _ftprintf(stderr, _T("Error: SetDllDirectory\n"));
+            return EXIT_FAILURE;
+        }
+
+        std::swap(bSave, *(pFileName - 1));
+    }
+
+    if (WriteProcessMemory(hProcess, pLibRemote.get(), (void*)szLibPath, sizeof(szLibPath), NULL) == 0)
+    {
+        _ftprintf(stderr, _T("Error: WriteProcessMemory 0x%08x\n"), GetLastError());
+        return EXIT_FAILURE;
+    }
+
     if (!CallRemoteFunc(hProcess, LOAD_LIBRARY, pLibRemote.get(), &hLibModule))
     {
         return EXIT_FAILURE;
@@ -154,6 +223,25 @@ int _tmain(int argc, LPCTSTR* argv)
         _ftprintf(stderr, _T("Error: LoadModule Failed\n"));
     else
         _ftprintf(stdout, _T("Loaded: 0x%08x\n"), hLibModule);
+
+    if (bSetDirectory)
+    {
+        // TODO Should put back the original dll directory
+        // Can't get the original using current method
+        // Could create a dll that gets injected and then call a method on that to inject another dll
+
+        DWORD bRet = FALSE;
+        if (!CallRemoteFunc(hProcess, SET_DLL_DIRECTORY, nullptr, &bRet))
+        {
+            return EXIT_FAILURE;
+        }
+
+        if (!bRet)
+        {
+            _ftprintf(stderr, _T("Error: SetDllDirectory\n"));
+            return EXIT_FAILURE;
+        }
+    }
 
     return hLibModule != NULL ? EXIT_SUCCESS : EXIT_FAILURE;
 }
