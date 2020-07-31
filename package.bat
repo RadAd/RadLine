@@ -9,16 +9,6 @@ goto :eof
 set PLATFORM=%1
 set ZIPFILE=%CD%\RadLine%PLATFORM%.zip
 del %ZIPFILE%
-call :add Bin\%PLATFORM%Release\RadLine.dll
-call :add Bin\%PLATFORM%Release\RLoadDll.exe
-call :add Lua\Bin%PLATFORM%\Lua.dll
-call :add RadLine.lua
-call :add UserRadLine.lua
-goto :eof
-
-:add
-echo *** %~dp1 %~nx1
-setlocal
-cd /d %~dp1
-7z a %ZIPFILE% %~nx1
+7z a %ZIPFILE% Bin\%PLATFORM%Release\RadLine.dll Bin\%PLATFORM%Release\RLoadDll.exe Lua\Bin%PLATFORM%\Lua.dll RadLine.lua UserRadLine.lua
+7z rn %ZIPFILE% Bin\%PLATFORM%Release\RadLine.dll RadLine.dll Bin\%PLATFORM%Release\RLoadDll.exe RLoadDll.exe Lua\Bin%PLATFORM%\Lua.dll Lua.dll
 goto :eof
