@@ -3,6 +3,7 @@
 #include <winternl.h>
 #include <Shlwapi.h>
 #include <tchar.h>
+#include <memory>
 
 #ifdef _UNICODE
 #define LOAD_LIBRARY        "LoadLibraryW"
@@ -81,6 +82,24 @@ BOOL CallRemoteFunc(HANDLE hProcess, LPCSTR pProcName, void* pLibRemote, DWORD* 
     return TRUE;
 }
 
+class VirtualAllocDeleter
+{
+public:
+    VirtualAllocDeleter(HANDLE hProcess)
+        : hProcess(hProcess)
+    {
+    }
+
+    void operator()(void* p) const
+    {
+        if (p != nullptr && VirtualFreeEx(hProcess, p, 0, MEM_RELEASE) == 0)
+            _ftprintf(stderr, _T("Error: VirtualFreeEx 0x%08x\n"), GetLastError());
+    }
+
+private:
+    const HANDLE hProcess;
+};
+
 int _tmain(int argc, LPCTSTR* argv)
 {
     if (argc != 3)
@@ -101,37 +120,33 @@ int _tmain(int argc, LPCTSTR* argv)
         return EXIT_FAILURE;
     }
 
-    void* pLibRemote = VirtualAllocEx(hProcess, NULL, sizeof(szLibPath), MEM_COMMIT, PAGE_READWRITE);
+    std::unique_ptr<void, VirtualAllocDeleter> pLibRemote(VirtualAllocEx(hProcess, NULL, sizeof(szLibPath), MEM_COMMIT, PAGE_READWRITE), VirtualAllocDeleter(hProcess));
     if (pLibRemote == nullptr)
     {
         _ftprintf(stderr, _T("Error: VirtualAllocEx 0x%08x\n"), GetLastError());
         return EXIT_FAILURE;
     }
 
-    if (WriteProcessMemory(hProcess, pLibRemote, (void*) szLibPath, sizeof(szLibPath), NULL) == 0)
+    if (WriteProcessMemory(hProcess, pLibRemote.get(), (void*) szLibPath, sizeof(szLibPath), NULL) == 0)
     {
         _ftprintf(stderr, _T("Error: WriteProcessMemory 0x%08x\n"), GetLastError());
-        VirtualFreeEx(hProcess, pLibRemote, sizeof(szLibPath), MEM_RELEASE);
         return EXIT_FAILURE;
     }
 
     DWORD hLibModule = NULL;
-    if (!CallRemoteFunc(hProcess, GET_MODULE_HANDLE, pLibRemote, &hLibModule))
+    if (!CallRemoteFunc(hProcess, GET_MODULE_HANDLE, pLibRemote.get(), &hLibModule))
     {
-        VirtualFreeEx(hProcess, pLibRemote, sizeof(szLibPath), MEM_RELEASE);
         return EXIT_FAILURE;
     }
 
     if (hLibModule != NULL)
     {
         _ftprintf(stderr, _T("Error: Module already loaded.\n"));
-        VirtualFreeEx(hProcess, pLibRemote, sizeof(szLibPath), MEM_RELEASE);
         return EXIT_FAILURE;
     }
 
-    if (!CallRemoteFunc(hProcess, LOAD_LIBRARY, pLibRemote, &hLibModule))
+    if (!CallRemoteFunc(hProcess, LOAD_LIBRARY, pLibRemote.get(), &hLibModule))
     {
-        VirtualFreeEx(hProcess, pLibRemote, sizeof(szLibPath), MEM_RELEASE);
         return EXIT_FAILURE;
     }
 
@@ -139,8 +154,6 @@ int _tmain(int argc, LPCTSTR* argv)
         _ftprintf(stderr, _T("Error: LoadModule Failed\n"));
     else
         _ftprintf(stdout, _T("Loaded: 0x%08x\n"), hLibModule);
-
-    VirtualFreeEx(hProcess, pLibRemote, sizeof(szLibPath), MEM_RELEASE);
 
     return hLibModule != NULL ? EXIT_SUCCESS : EXIT_FAILURE;
 }

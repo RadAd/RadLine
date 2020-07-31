@@ -231,7 +231,7 @@ namespace {
         {
             char FullNameS[MAX_PATH];
             if (GetCurrentDirectoryA(ARRAYSIZE(FullNameS), FullNameS) == 0)
-                luaL_error(lua, "GetCurrentDirectory failed %d\n", GetLastError());
+                luaL_error(lua, "GetCurrentDirectory failed 0x%08x\n", GetLastError());
             lua_pushstring(lua, FullNameS);
         }
         else
@@ -239,13 +239,13 @@ namespace {
             static std::vector<char> v(1024, 0);
             DWORD ret = GetEnvironmentVariableA(s, v.data(), (DWORD) v.size());
             if (ret == 0)
-                luaL_error(lua, "GetEnvironmentVariable failed %d\n", GetLastError());
+                luaL_error(lua, "GetEnvironmentVariable failed 0x%08x\n", GetLastError());
             else if (ret != ERROR_ENVVAR_NOT_FOUND)
             {
                 v.resize((size_t) ret);
                 ret = GetEnvironmentVariableA(s, v.data(), (DWORD) v.size());
                 if (ret == 0)
-                    luaL_error(lua, "GetEnvironmentVariable failed %d\n", GetLastError());
+                    luaL_error(lua, "GetEnvironmentVariable failed 0x%08x\n", GetLastError());
             }
             lua_pushstring(lua, v.data());
         }
