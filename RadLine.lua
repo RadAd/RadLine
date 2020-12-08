@@ -78,7 +78,7 @@ function beginswith(s, t)
     return s:find("^"..escape(t)) ~= nil
 end
 
-DebugOut(_VERSION.."\n")
+DebugOut("RadLine ".._VERSION.."\n")
 
 function FindExeFiles(s)
     local pathext = split(GetEnv("PATHEXT"), ";")
@@ -88,7 +88,9 @@ function FindExeFiles(s)
     
     local f = {}
     for _,i in ipairs(pathext) do
-        if ext and beginswith(i:upper(), ext) then
+        local dot = i:match'^.*()%.' -- Find last of '.'
+        local iext = dot and i:sub(dot) or i
+        if ext and beginswith(iext:upper(), ext) then
             concat(f, FindFiles(s.."*", FindFilesE.FileOnly))
         else
             concat(f, FindFiles(s.."*"..i, FindFilesE.FileOnly))
