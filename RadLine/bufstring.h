@@ -4,6 +4,11 @@
 #include <string.h>
 #include <string>
 
+// TODO
+// Make the iterators a class so we can do more checking
+// Replace std::wstring with std::wstring_view
+// Move substr into here
+
 class bufstring
 {
 public:

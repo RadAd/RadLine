@@ -52,6 +52,16 @@ namespace {
 
         return list;
     }
+
+    inline bool Match(const std::wstring& s, const wchar_t* p, size_t len)
+    {
+        return (s.length() <= len && _wcsnicmp(s.c_str(), p, s.length()) == 0);
+    }
+
+    inline bool Match(const std::wstring& s, const wchar_t* p)
+    {
+        return Match(s, p, wcslen(p));
+    }
 };
 
 std::vector<std::wstring> findFiles(const std::wstring& s, FindFilesE filter)
@@ -109,65 +119,6 @@ std::vector<std::wstring> findFiles(const std::wstring& s, FindFilesE filter)
     return list;
 }
 
-std::vector<std::wstring> findFiles(const std::wstring& s, const std::vector<const wchar_t*>& xl)
-{
-    size_t dot = s.rfind(L'.');
-    size_t slash = s.rfind(L'\\');
-
-    std::vector<std::wstring> list;
-    append(list, findFiles(s, FindFilesE::DirOnly));
-
-    for (const wchar_t *x : xl)
-    {
-        // This the case where s is test.ex* and x is .exe
-        if (dot != std::wstring::npos && dot > slash && Match(s.substr(dot, s.length() - dot - 1), x))
-            append(list, findFiles(s, FindFilesE::FileOnly));
-        else
-            append(list, findFiles(s + x, FindFilesE::FileOnly));
-    }
-    return list;
-}
-
-std::vector<std::wstring> findExeFiles(const std::wstring& s)
-{
-    std::wstring f(s + L'*');
-
-    wchar_t pathext[1024] = L"";
-    GetEnvironmentVariableW(L"PATHEXT", pathext);
-    std::vector<const wchar_t*> xl(Split(pathext, L';'));
-
-    return findFiles(f, xl);
-}
-
-std::vector<std::wstring> findPath(const std::wstring& s)
-{
-    std::vector<wchar_t> path(10240);
-    GetEnvironmentVariableW(L"PATH", path);
-    std::vector<wchar_t> pathext(10240);
-    GetEnvironmentVariableW(L"PATHEXT", pathext);
-
-    std::vector<const wchar_t*> pl(Split(path.data(), L';'));
-    pl.push_back(L".");
-    std::vector<const wchar_t*> xl(Split(pathext.data(), L';'));
-    std::vector<std::wstring> list;
-
-    for (const wchar_t *p : pl)
-    {
-        std::wstringstream f;
-        f << p;
-        f << L'\\';
-        f << s;
-        f << L'*';
-
-        append(list, findFiles(f.str(), xl));
-    }
-
-    std::sort(list.begin(), list.end(), FileNameLess);
-    auto it = std::unique(list.begin(), list.end());
-    list.erase(it, list.end());
-    return list;
-}
-
 std::vector<std::wstring> findEnv(const std::wstring& s)
 {
     std::vector<std::wstring> list;
@@ -211,6 +162,7 @@ std::wstring getAlias(const std::wstring& s)
     GetConsoleAliasW((LPWSTR) s.c_str(), buf, ARRAYSIZE(buf), L"cmd.exe");  // TODO Use this exe
     return buf;
 }
+
 std::vector<std::wstring> findRegKey(const std::wstring& s)
 {
     HKEY hParentKey = NULL;

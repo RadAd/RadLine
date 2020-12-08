@@ -61,54 +61,12 @@ namespace {
         }
     };
 
-    std::wstring str(std::wstring_view s)
-    {
-        return std::wstring(s);
-    }
-
-    std::wstring_view unquote(std::wstring_view s)
-    {
-        if (s.size() >= 2 && s.front() == L'"' && s.back() == L'"')
-        {
-            s.remove_prefix(1);
-            s.remove_suffix(1);
-        }
-        return s;
-    }
-
-    size_t findEnvBegin(std::wstring_view s)
-    {
-        bool in = false;
-        for (size_t i = 0; i < s.length(); ++i)
-        {
-            if (s[i] == L'%')
-                in = !in;
-        }
-        if (in)
-            return s.rfind('%');
-        else
-            return std::wstring::npos;
-    }
-
     bool isCommandSeparator(std::wstring_view s)
     {
         return s.compare(L"&") == 0
             || s.compare(L"|") == 0
             || s.compare(L"&&") == 0
             || s.compare(L"||") == 0;
-    }
-
-    bool isFirstCommand(const bufstring& line, const std::vector<string_range>& params, std::vector<string_range>::const_iterator p)
-    {
-        return p == params.begin() || isCommandSeparator((p - 1)->substr(line));
-    }
-
-    std::vector<string_range>::const_iterator getFirstCommand(const bufstring& line, const std::vector<string_range>& params, std::vector<string_range>::const_iterator p)
-    {
-        std::vector<string_range>::const_iterator f = p;
-        while (f != params.begin() && !isCommandSeparator((f - 1)->substr(line)))
-            --f;
-        return f;
     }
 
     inline bool CharCaseInsensitiveEqual(wchar_t a, wchar_t b)
@@ -135,18 +93,6 @@ namespace {
     const wchar_t* delim2 = L"=<>|&";
     inline bool isWhiteSpace(wchar_t c) { return wcschr(ws, c) != nullptr; }
     inline bool isDelim(wchar_t c) { return wcschr(delim2, c) != nullptr; }
-
-    inline void LuaPush(lua_State* lua, const bufstring& s, const std::vector<string_range>& v)
-    {
-        lua_createtable(lua, (int)v.size(), 0);
-        int i = 1;
-        for (string_range w : v)
-        {
-            LuaPush(lua, w.substr(s));
-            lua_rawseti(lua, -2, i);
-            ++i;
-        }
-    }
 
     std::vector<string_range> findParam(bufstring& line)
     {
@@ -188,33 +134,15 @@ namespace {
         return rs;
     }
 
-    const WCHAR* internal_cmds[] = {
-        L"assoc", L"call", L"cd", L"chdir", L"cls", L"color", L"copy", L"date", L"del", L"dir", L"echo", L"endlocal", L"erase", L"exit", L"for",
-        L"ftype", L"goto", L"if", L"md", L"mkdir", L"mklink", L"move", L"path", L"popd", L"prompt", L"pushd", L"rem", L"ren", L"rd", L"rmdir",
-        L"set", L"setlocal", L"shift", L"start", L"time", L"title", L"type", L"ver", L"verify", L"vol"
-    };
-
-    const WCHAR* dir_only[] = {
-        L"cd", L"chdir", L"md", L"mkdir", L"pushd"
-    };
-
-    const WCHAR* git_cmds[] = {
-        L"clone", L"init", L"add", L"mv", L"reset", L"rm", L"bisect", L"grep", L"log", L"show", L"status"
-        L"branch", L"checkout", L"commit", L"diff", L"merge", L"rebase", L"tag", L"fetch", L"pull", L"push", L"help"
-    };
-
-    const WCHAR* reg_cmds[] = {
-        L"query", L"add", L"delete", L"copy", L"save", L"load",
-        L"unload", L"restore", L"compare", L"export", L"import", L"flags"
-    };
-
-    template <size_t size>
-    inline void filter(std::vector<std::wstring>& all, const std::wstring& s, const WCHAR*(&words)[size])
+    inline void LuaPush(lua_State* lua, const bufstring& s, const std::vector<string_range>& v)
     {
-        for (const wchar_t* w : words)
+        lua_createtable(lua, (int)v.size(), 0);
+        int i = 1;
+        for (string_range w : v)
         {
-            if (Match(s, w))
-                all.push_back(w);
+            LuaPush(lua, w.substr(s));
+            lua_rawseti(lua, -2, i);
+            ++i;
         }
     }
 
@@ -237,13 +165,13 @@ namespace {
         else
         {
             static std::vector<char> v(1024, 0);
-            DWORD ret = GetEnvironmentVariableA(s, v.data(), (DWORD) v.size());
+            DWORD ret = GetEnvironmentVariableA(s, v);
             if (ret == 0)
                 luaL_error(lua, "GetEnvironmentVariable failed 0x%08x\n", GetLastError());
             else if (ret != ERROR_ENVVAR_NOT_FOUND)
             {
                 v.resize((size_t) ret);
-                ret = GetEnvironmentVariableA(s, v.data(), (DWORD) v.size());
+                ret = GetEnvironmentVariableA(s, v);
                 if (ret == 0)
                     luaL_error(lua, "GetEnvironmentVariable failed 0x%08x\n", GetLastError());
             }
@@ -287,10 +215,6 @@ namespace {
 
     std::vector<std::wstring> findPotential(const bufstring& line, const std::vector<string_range>& params, std::vector<string_range>::const_iterator p, const std::wstring& s, std::size_t* i, std::wstring& msg)
     {
-        // TODO Handle quotes already on params
-        std::vector<std::wstring> all;
-
-#if 1
         std::unique_ptr<lua_State, LuaCloser> L(luaL_newstate());
         luaL_openlibs(L.get());
 
@@ -314,7 +238,7 @@ namespace {
 
         char strFile[MAX_PATH];
         GetModuleFileNameA(g_hModule, strFile, ARRAYSIZE(strFile));
-        char* const pFileName = PathFindName(strFile);
+        char* const pFileName = PathFindFileNameA(strFile);
         const rsize_t strFileLen = ARRAYSIZE(strFile) - (pFileName - strFile);
 
         const char* files[] = {
@@ -335,22 +259,20 @@ namespace {
             {
                 if (luaL_dofile(L.get(), strFile) != LUA_OK)
                 {
-                    /*std::wstring*/ msg = LuaPopString(L.get());
-                    //DebugOut(L"RadLine %s\n", msg.c_str());
-                    //MessageBox(NULL, msg.c_str(), L"RadLine", MB_OK | MB_ICONERROR);
-                    return all;
+                    msg = LuaPopString(L.get());
+                    return std::vector<std::wstring>();
                 }
             }
             assert(lua_gettop(L.get()) == 0);
         }
 
+        std::vector<std::wstring> all;
+
         //int fi = 0;
         //int di = 0;
         if (lua_getglobal(L.get(), "FindPotential") != LUA_TFUNCTION)
         {
-            /*std::wstring*/ msg = L"FindPotential is not a function";
-            //DebugOut(L"RadLine %s\n", msg.c_str());
-            //MessageBox(NULL, msg.c_str(), L"RadLine", MB_OK | MB_ICONERROR);
+            msg = L"FindPotential is not a function";
             lua_pop(L.get(), 1);
         }
         else if (//fi = lua_absindex(L.get(), 0),
@@ -360,102 +282,14 @@ namespace {
                 //di = lua_absindex(L.get(), 0),
                 lua_pcall(L.get(), 3, 2, 0) != LUA_OK)
         {
-            /*std::wstring*/ msg = LuaPopString(L.get());
-            //DebugOut(L"pcall %s\n", msg.c_str());
-            //MessageBox(NULL, msg.c_str(), L"RadLine", MB_OK | MB_ICONERROR);
+            msg = LuaPopString(L.get());
         }
         else
         {
             *i = (size_t) (lua_isnil(L.get(), -1) ? (lua_pop(L.get(), 1), 0) : LuaPopInteger(L.get()) - 1);
-            std::vector<std::wstring> vs = LuaPopVectorOfStrings(L.get());
-            append(all, vs);
+            all = LuaPopVectorOfStrings(L.get());
         }
         assert(lua_gettop(L.get()) == 0);
-#else
-        size_t envBegin = findEnvBegin(s);
-        if (envBegin != std::wstring::npos)
-        {
-            *i = envBegin;
-            append(all, findEnv(s.substr(envBegin + 1)));
-        }
-        else if (isFirstCommand(line, params, p))
-        {
-            const wchar_t* pName = PathFindName(s[0] == '"' ? s.c_str() + 1 : s.c_str());
-            *i = pName - s.c_str();
-
-            if (*i == 0)
-            {
-                filter(all, s, internal_cmds);
-                append(all, findPath(s));
-                append(all, findAlias(s));
-            }
-            else
-            {
-                append(all, findExeFiles(s));
-            }
-        }
-        else
-        {
-            const std::vector<string_range>::const_iterator f = getFirstCommand(line, params, p);
-            const std::wstring sfirst = str(unquote(f->substr(line)));
-            const wchar_t* pFirstName = PathFindName(sfirst.c_str());
-            const std::wstring_view first(pFirstName);
-
-            const wchar_t* pName = PathFindName(s[0] == '"' ? s.c_str() + 1 : s.c_str());
-            *i = pName - s.c_str();
-
-            // TODO copy and adjust *f to point to file name
-
-            if (p > f && (p - 1)->substr(line) == L">" || (p - 1)->substr(line) == L"<")
-            {
-                append(all, findFiles(s + L"*", FindFilesE::All));
-            }
-            else if (first.compare(L"alias") == 0 || first.compare(L"alias.bat") == 0)
-            {
-                if (std::distance(f, p) == 1)
-                    append(all, findAlias(s));
-                else
-                    append(all, findFiles(s + L"*", FindFilesE::All));
-            }
-            else if (first.compare(L"where") == 0 || first.compare(L"where.exe") == 0)
-            {
-                if (std::distance(f, p) == 1)   // TODO Skip over options
-                    append(all, findPath(s));
-                else
-                    append(all, findFiles(s + L"*", FindFilesE::All));
-            }
-            else if (first.compare(L"git") == 0 || first.compare(L"git.exe") == 0)
-            {
-                if (std::distance(f, p) == 1)   // TODO Skip over options
-                    filter(all, s, git_cmds);
-                else
-                    append(all, findFiles(s + L"*", FindFilesE::All));
-            }
-            else if (first.compare(L"reg") == 0 || first.compare(L"reg.exe") == 0)
-            {
-                if (std::distance(f, p) == 1)
-                    filter(all, s, reg_cmds);
-                else if (std::distance(f, p) == 2)
-                    append(all, findRegKey(s));
-                else
-                    append(all, findFiles(s + L"*", FindFilesE::All));
-            }
-            else
-            {
-                FindFilesE filter = FindFilesE::All;
-                for (const wchar_t* w : dir_only)
-                {
-                    if (first.compare(w) == 0)
-                    {
-                        filter = FindFilesE::DirOnly;
-                        break;
-                    }
-                }
-
-                append(all, findFiles(s + L"*", filter));
-            }
-        }
-#endif
 
         return all;
     }
@@ -594,9 +428,7 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
         ++p;
 
     const std::wstring substr = p != params.end() && (line.begin() + *i) >= p->begin
-        //? line.substr(p->begin() - line.begin(), std::min(const_cast<const wchar_t*>(line.begin() + *i), p->end()) - p->begin())
-        //? str(std::wstring_view(p->begin, std::min(*i - (p->begin - line.begin()), p->length())))
-        ? str(::substr(line, p->begin, std::min(line.begin() + *i, p->end)))
+        ? std::wstring(::substr(line, p->begin, std::min(line.begin() + *i, p->end)))
         : std::wstring();
 
     std::wstring msg;
@@ -619,7 +451,6 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
         {
             string_range r = p != params.end() ? *p : string_range({ line.end(), line.end() });
 
-            // TODO fix up handling inserting quotes
             bool openquote = false;
             if (r.begin < line.end())
             {
@@ -741,7 +572,7 @@ void ExpandAlias(bufstring& line)
     // TODO Repeat for all alias ie use isFirstCommand
 
     std::vector<string_range>::iterator pb = params.begin();
-    std::wstring ae = getAlias(str(pb->substr(line)));
+    std::wstring ae = getAlias(std::wstring(pb->substr(line)));
     if (!ae.empty())
     {
         std::vector<string_range>::iterator pe = pb;
@@ -774,18 +605,18 @@ void ExpandAlias(bufstring& line)
                 case L'6': case L'7': case L'8': case L'9':
                     {
                         int j = c - L'0';
-                        std::wstring s;
+                        std::wstring_view s;
                         if (std::distance(params.begin(), pb) + j <= std::distance(params.begin(), pe))
-                            s = str((pb + j)->substr(line));
+                            s = (pb + j)->substr(line);
                         ae.replace(i - 1, 2, s);
                         i += s.length() - 1;
                     }
                     break;
                 case L'*':
                     {
-                        std::wstring s;
+                        std::wstring_view s;
                         if ((pb + 1) <= pe)
-                            s = str(substr(line, (pb + 1)->begin, pe->end));
+                            s = substr(line, (pb + 1)->begin, pe->end);
                         ae.replace(i - 1, 2, s);
                         i += s.length() - 1;
 

@@ -4,8 +4,6 @@
 #include "RadReadConsole.h"
 #include "..\minhook\include\MinHook.h"
 
-// TODO Detect if already loaded
-
 HMODULE g_hModule = NULL;
 
 BOOL APIENTRY DllMain(HMODULE hModule,

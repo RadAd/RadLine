@@ -127,6 +127,7 @@ command_sep = {
 
 redirect_sep = {
     [">"] = true;
+    [">>"] = true;
     ["<"] = true;
     ["2>"] = true;
 }
