@@ -2,6 +2,7 @@
 
 #include "Debug.h"
 #include "RadReadConsole.h"
+#include "DynEnv.h"
 #include "..\minhook\include\MinHook.h"
 
 HMODULE g_hModule = NULL;
@@ -20,13 +21,13 @@ BOOL APIENTRY DllMain(HMODULE hModule,
             OutputDebugString(TEXT("RadLine DLL_PROCESS_ATTACH\n"));
 
             HMODULE h = LoadLibrary(L"KernelBase.dll");
-            DebugOut(TEXT("RadLine KernelBase 0x%x\n"), h);
+            DebugOut(TEXT("RadLine KernelBase 0x%x\n"), HandleToULong(h));
 
             MH_STATUS status = MH_OK;
             status = MH_Initialize();
             DebugOut(TEXT("RadLine MH_Initialize %d\n"), status);
 
-            if (true)
+            if (true && h != NULL)
             {
                 FARPROC pTargetReadConsoleW = GetProcAddress(h, "ReadConsoleW");
                 DebugOut(TEXT("RadLine GetProcAddress pTargetReadConsoleW 0x%0p\n"), pTargetReadConsoleW);
@@ -34,6 +35,16 @@ BOOL APIENTRY DllMain(HMODULE hModule,
                 DebugOut(TEXT("RadLine MH_CreateHook ReadConsoleW %d 0x%0p 0x%0p 0x%0p\n"), status, pTargetReadConsoleW, RadReadConsoleW, pOrigReadConsoleW);
                 status = MH_EnableHook(pTargetReadConsoleW);
                 DebugOut(TEXT("RadLine MH_EnableHook ReadConsoleW %d\n"), status);
+            }
+
+            if (true && h != NULL)
+            {
+                FARPROC pTargetGetEnvironmentVariableW = GetProcAddress(h, "GetEnvironmentVariableW");
+                DebugOut(TEXT("RadLine GetProcAddress pTargetGetEnvironmentVariableW 0x%0p\n"), pTargetGetEnvironmentVariableW);
+                status = MH_CreateHook(pTargetGetEnvironmentVariableW, RadGetEnvironmentVariableW, (LPVOID*) &pOrigGetEnvironmentVariableW);
+                DebugOut(TEXT("RadLine MH_CreateHook GetEnvironmentVariableW %d 0x%0p 0x%0p 0x%0p\n"), status, pTargetGetEnvironmentVariableW, RadGetEnvironmentVariableW, pOrigGetEnvironmentVariableW);
+                status = MH_EnableHook(pTargetGetEnvironmentVariableW);
+                DebugOut(TEXT("RadLine MH_EnableHook GetEnvironmentVariableW %d\n"), status);
             }
 
             OutputDebugString(TEXT("RadLine DLL_PROCESS_ATTACH done\n"));
@@ -45,6 +56,8 @@ BOOL APIENTRY DllMain(HMODULE hModule,
             MH_STATUS status = MH_OK;
             status = MH_DisableHook(ReadConsoleW);
             DebugOut(TEXT("RadLine MH_DisableHook ReadConsoleW %d\n"), status);
+            status = MH_DisableHook(GetEnvironmentVariableW);
+            DebugOut(TEXT("RadLine MH_DisableHook GetEnvironmentVariableW %d\n"), status);
             status = MH_Uninitialize();
             DebugOut(TEXT("RadLine MH_Uninitialize %d\n"), status);
             OutputDebugString(TEXT("RadLine DLL_PROCESS_DETACH done\n"));

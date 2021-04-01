@@ -190,6 +190,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="DynEnv.cpp" />
     <ClCompile Include="RadLine.cpp" />
     <ClCompile Include="RadReadConsole.cpp" />
     <ClCompile Include="WinHelpers.cpp" />
@@ -198,6 +199,7 @@
     <ClInclude Include="bufstring.h" />
     <ClInclude Include="Completion.h" />
     <ClInclude Include="Debug.h" />
+    <ClInclude Include="DynEnv.h" />
     <ClInclude Include="LuaUtils.h" />
     <ClInclude Include="RadLine.h" />
     <ClInclude Include="RadReadConsole.h" />

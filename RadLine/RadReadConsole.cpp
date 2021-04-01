@@ -9,7 +9,7 @@
 #include <wchar.h>
 
 extern "C" {
-    RadReadConsoleType pOrigReadConsoleW = nullptr;
+    decltype(&ReadConsoleW) pOrigReadConsoleW = nullptr;
 
     // Designed to replace ReadConsoleW
     __declspec(dllexport)
@@ -21,9 +21,9 @@ extern "C" {
         _In_opt_ PCONSOLE_READCONSOLE_CONTROL pInputControl
     )
     {
-        DebugOut("RadLine RadReadConsoleW 0x%08x 0x%p %d 0x%p 0x%p\n", hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
+        DebugOut(TEXT("RadLine RadReadConsoleW 0x%08x 0x%p %d 0x%p 0x%p\n"), hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
         if (pInputControl != nullptr)
-            DebugOut("RadLine PCONSOLE_READCONSOLE_CONTROL %d %d 0x%08x 0x%08x\n", pInputControl->nLength, pInputControl->nInitialChars, pInputControl->dwCtrlWakeupMask, pInputControl->dwControlKeyState);
+            DebugOut(TEXT("RadLine PCONSOLE_READCONSOLE_CONTROL %d %d 0x%08x 0x%08x\n"), pInputControl->nLength, pInputControl->nInitialChars, pInputControl->dwCtrlWakeupMask, pInputControl->dwControlKeyState);
 
         wchar_t enabled[100] = L"";
         GetEnvironmentVariableW(L"RADLINE", enabled);
@@ -35,14 +35,14 @@ extern "C" {
 
         if (nNumberOfCharsToRead == 1 || GetFileType(hConsoleInput) != FILE_TYPE_CHAR || GetFileType(hStdOutput) != FILE_TYPE_CHAR)
         {
-            DebugOut("RadLine RadReadConsoleW Orig\n");
+            DebugOut(TEXT("RadLine RadReadConsoleW Orig\n"));
             return pOrigReadConsoleW(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
         }
         else if ((_wcsicmp(enabled, L"") == 0 || _wcsicmp(enabled, L"1") == 0)
             && pInputControl != nullptr && pInputControl->dwCtrlWakeupMask != 0
             && lpNumberOfCharsRead != nullptr)
         {
-            DebugOut("RadLine RadReadConsoleW 2\n");
+            DebugOut(TEXT("RadLine RadReadConsoleW 2\n"));
 
             unsigned long t = 0;
             _BitScanForward(&t, pInputControl->dwCtrlWakeupMask);
@@ -86,7 +86,7 @@ extern "C" {
         else if (_wcsicmp(enabled, L"2") == 0
             && (pInputControl == nullptr || pInputControl->nInitialChars == 0))
         {
-            DebugOut("RadLine RadReadConsoleW 1\n");
+            DebugOut(TEXT("RadLine RadReadConsoleW 1\n"));
             SetConsoleMode(hStdOutput, modeout & ~ENABLE_PROCESSED_OUTPUT); // Needed so that cursor moves on to next line
 
             size_t length = RadLine(hConsoleInput, hStdOutput, (wchar_t*) lpBuffer, nNumberOfCharsToRead);
@@ -100,7 +100,7 @@ extern "C" {
         }
         else
         {
-            DebugOut("RadLine RadReadConsoleW Orig\n");
+            DebugOut(TEXT("RadLine RadReadConsoleW Orig\n"));
             return pOrigReadConsoleW(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
         }
     }
