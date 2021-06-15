@@ -52,8 +52,12 @@ extern "C" {
     )
     {
         DWORD ret = 0;
-        size_t len = lpName != nullptr ? wcslen(lpName) : 0;
-        if (lpName != nullptr && lpName[0] == L'(' && lpName[len - 1] == L')')
+        const size_t len = lpName != nullptr ? wcslen(lpName) : 0;
+
+        if (lpBuffer == nullptr)
+            // TODO Handle the case when lpBuffer == nullptr
+            ret = pOrigGetEnvironmentVariableW(lpName, lpBuffer, nSize);
+        else if (lpName != nullptr && lpName[0] == L'(' && lpName[len - 1] == L')')
         {
             WCHAR strCmdLine[2048];
             wcsncpy_s(strCmdLine, ARRAYSIZE(strCmdLine), lpName + 1, len - 2);

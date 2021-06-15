@@ -68,16 +68,13 @@ BOOL CallRemoteFunc(HANDLE hProcess, LPCSTR pProcName, void* pLibRemote, DWORD* 
     if (hThread == NULL)
     {
         _ftprintf(stderr, _T("Error: CreateRemoteThread 0x%08x\n"), GetLastError());
-        CloseHandle(hThread);
         return FALSE;
     }
     if (WaitForSingleObject(hThread, INFINITE) == WAIT_FAILED)
         _ftprintf(stderr, _T("Error: WaitForSingleObject 0x%08x\n"), GetLastError());
 
     if (!GetExitCodeThread(hThread, pRet))
-    {
         _ftprintf(stderr, _T("Error: GetExitCodeThread 0x%08x\n"), GetLastError());
-    }
 
     CloseHandle(hThread);
 

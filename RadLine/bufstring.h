@@ -68,6 +68,18 @@ public:
         assert(m_buf[m_len] == L'\0');
     }
 
+    void insert(const wchar_t* b, const wchar_t* s)
+    {
+        assert(b >= begin());
+        assert(b <= end());
+        const size_t l = wcslen(s);
+        wchar_t* lb = begin() + (b - begin());
+        wmemmove(lb + l, lb, end() - lb + l);
+        wmemmove(lb, s, l);
+        m_len += l;
+        assert(m_buf[m_len] == L'\0');
+    }
+
 #if 0
     void replace(size_t b, size_t l, const std::wstring& s)
     {
