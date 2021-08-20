@@ -119,7 +119,7 @@ std::vector<std::wstring> findFiles(const std::wstring& s, FindFilesE filter)
     return list;
 }
 
-std::vector<std::wstring> findEnv(const std::wstring& s)
+std::vector<std::wstring> findEnv(const std::wstring& s, bool enclose)
 {
     std::vector<std::wstring> list;
 
@@ -131,7 +131,7 @@ std::vector<std::wstring> findEnv(const std::wstring& s)
         {
             const wchar_t* eq = wcschr(e, L'=');
             std::wstring n(e, eq - e);
-            list.push_back(L'%' + n + L'%');
+            list.push_back(enclose ? L'%' + n + L'%' : n);
         }
         e += wcslen(e) + 1;
     }

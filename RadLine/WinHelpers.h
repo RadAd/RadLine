@@ -83,7 +83,7 @@ inline void EasyWriteFormat(const HANDLE hStdOutput, LPCWCHAR format, ...)
 
 enum class FindFilesE { All, DirOnly, FileOnly };
 std::vector<std::wstring> findFiles(const std::wstring& s, FindFilesE filter);
-std::vector<std::wstring> findEnv(const std::wstring& s);
+std::vector<std::wstring> findEnv(const std::wstring& s, bool enclose);
 std::vector<std::wstring> findAlias(const std::wstring& s);
 std::wstring getAlias(const std::wstring& s);
 std::vector<std::wstring> findRegKey(const std::wstring& s);

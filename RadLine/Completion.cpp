@@ -191,8 +191,10 @@ namespace {
 
     int l_FindEnv(lua_State* lua)
     {
-        std::wstring s = From_utf8(luaL_checklstring(lua, -1, nullptr));
-        std::vector<std::wstring> f = findEnv(s);
+        luaL_checktype(lua, -1, LUA_TBOOLEAN);
+        bool enclose = lua_toboolean(lua, -1);
+        std::wstring s = From_utf8(luaL_checklstring(lua, -2, nullptr));
+        std::vector<std::wstring> f = findEnv(s, enclose);
         LuaPush(lua, f);
         return 1;  /* number of results */
     }

@@ -1,3 +1,14 @@
+function FindPotentialEnv(params, p)
+    local s,i = GetParam(params, p)
+    if p == 2 then
+        return FindEnv(s, false), i
+    else
+        return FindPotentialDefault(params, p)
+    end
+end
+
+command_fn["set"] = FindPotentialEnv
+
 reg_cmds = {
     "query", "add", "delete", "copy", "save", "load",
     "unload", "restore", "compare", "export", "import", "flags"
@@ -18,19 +29,6 @@ end
 
 command_fn["reg"] = FindPotentialReg
 command_fn["reg.exe"] = FindPotentialReg
-
-function FindPotentialAlias(params, p)
-    local s,i = GetParam(params, p)
-    if p == 2 then
-        return FindAlias(s), i
-    else
-        -- TODO This should really start the command again and recall FindPotentital
-        return FindFiles(s.."*", FindFilesE.All), i
-    end
-end
-
-command_fn["alias"] = FindPotentialAlias
-command_fn["alias.bat"] = FindPotentialAlias
 
 where_options = { "/R", "/Q", "/F", "/T" }
 

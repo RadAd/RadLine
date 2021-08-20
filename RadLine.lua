@@ -6,7 +6,7 @@
 -- function GetEnv(s) -- because os.getenv doesn't reflect updates values
 FindFilesE = { All = 0, DirOnly = 1, FileOnly = 2 }
 -- function FindFiles(s, FindFilesE)
--- function FindEnv(s)
+-- function FindEnv(s, enclose)
 -- function FindRegKey(s)
 
 function DebugOutLn(s)
@@ -42,7 +42,7 @@ end
 function concat_if(t, s, ...)
     for i,v in ipairs({...}) do
         for ii,vv in ipairs(v) do
-            if beginswith(vv, s) then
+            if beginswith(vv:lower(), s) then
                 t[#t+1] = vv
             end
         end
@@ -85,7 +85,7 @@ function FindExeFiles(s)
     local dot = s:match'^.*()%.' -- Find last of '.'
     local slash = s:match'^.*()\\' or 0 -- Find last of '\'
     local ext = (dot and dot > slash) and s:sub(dot):upper() or nil
-    
+
     local f = {}
     for _,i in ipairs(pathext) do
         local dot = i:match'^.*()%.' -- Find last of '.'
@@ -180,7 +180,7 @@ function FindPotential(params, p)
     local e = FindEnvBegin(s)
 
     if e then
-        return FindEnv(s:sub(e + 1)), e
+        return FindEnv(s:sub(e + 1), true), e
     elseif p == 1 or command_sep[params[p - 1]] then
         local f ={}
         if i == 1 then
