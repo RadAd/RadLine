@@ -32,6 +32,11 @@ set RADLINE_AUTO_TERMINATE_BATCH=1
 
 This setting will auto respond `y` to the `Terminate batch job (Y/N)?` prompt.
 
+Expand Tilde
+============
+
+The `~` at the start of an argument is expanded to `%USERPROFILE%`.
+
 Post command execution
 ======================
 

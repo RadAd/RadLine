@@ -9,6 +9,17 @@
 
 #include <wchar.h>
 
+namespace {
+    int GetEnvironmentInt(LPCWSTR name, int def = 0)
+    {
+        wchar_t value[100] = L"";
+        if (GetEnvironmentVariableW(name, value) != 0)
+            return _wtoi(value);
+        else
+            return def;
+    }
+}
+
 extern "C" {
     decltype(&ReadConsoleW) pOrigReadConsoleW = nullptr;
 
@@ -26,8 +37,7 @@ extern "C" {
         if (pInputControl != nullptr)
             DebugOut(TEXT("RadLine PCONSOLE_READCONSOLE_CONTROL %d %d 0x%08x 0x%08x\n"), pInputControl->nLength, pInputControl->nInitialChars, pInputControl->dwCtrlWakeupMask, pInputControl->dwControlKeyState);
 
-        wchar_t enabled[100] = L"";
-        GetEnvironmentVariableW(L"RADLINE", enabled);
+        int enabled = GetEnvironmentInt(L"RADLINE", 1);
 
         const HANDLE hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -44,9 +54,7 @@ extern "C" {
 
             if (response_count == 0)
             {
-                wchar_t terminate[100] = L"";
-                GetEnvironmentVariableW(L"RADLINE_AUTO_TERMINATE_BATCH", terminate);
-                if (_wcsicmp(terminate, L"1") == 0)
+                if (GetEnvironmentInt(L"RADLINE_AUTO_TERMINATE_BATCH"))
                 {
                     CONSOLE_SCREEN_BUFFER_INFO csbi = {};
                     GetConsoleScreenBufferInfo(hStdOutput, &csbi);
@@ -79,7 +87,7 @@ extern "C" {
             else
                 return pOrigReadConsoleW(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
         }
-        else if ((_wcsicmp(enabled, L"") == 0 || _wcsicmp(enabled, L"1") == 0)
+        else if (enabled == 1
             && pInputControl != nullptr && pInputControl->dwCtrlWakeupMask != 0
             && lpNumberOfCharsRead != nullptr)
         {
@@ -120,6 +128,21 @@ extern "C" {
                     repeat = false;
             }
 
+            if (GetEnvironmentInt(L"RADLINE_TILDE", 1))
+            {
+                const wchar_t replace[] = L" %USERPROFILE%";
+                TCHAR* start = reinterpret_cast<TCHAR*>(lpBuffer);
+                TCHAR* found;
+                while ((found = wcsstr(start, L" ~")) != nullptr)
+                {
+                    bufstring cmd(reinterpret_cast<TCHAR*>(lpBuffer), nNumberOfCharsToRead, *lpNumberOfCharsRead);
+                    const wchar_t* w = cmd.begin() + *lpNumberOfCharsRead - 2;
+                    cmd.replace(found, 2, replace);
+                    *lpNumberOfCharsRead = static_cast<DWORD>(cmd.length());
+                    start = found + ARRAYSIZE(replace) - 1;
+                }
+            }
+
             // nNumberOfCharsToRead == 1023 when used for "set /p"
             if (nNumberOfCharsToRead != 1023 && *lpNumberOfCharsRead > 2)
             {
@@ -139,7 +162,7 @@ extern "C" {
 
             return r;
         }
-        else if (_wcsicmp(enabled, L"2") == 0
+        else if (enabled == 2
             && (pInputControl == nullptr || pInputControl->nInitialChars == 0))
         {
             DebugOut(TEXT("RadLine RadReadConsoleW 1\n"));
