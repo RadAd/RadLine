@@ -132,7 +132,6 @@ extern "C" {
                     if (found[1] == L'\r' || found[1] == L'\\' || found[1] == L' ' || found[1] == L'\"')
                     {
                         bufstring cmd(reinterpret_cast<TCHAR*>(lpBuffer), nNumberOfCharsToRead, *lpNumberOfCharsRead);
-                        const wchar_t* w = cmd.begin() + *lpNumberOfCharsRead - 2;
                         cmd.replace(found, 1, replace);
                         *lpNumberOfCharsRead = static_cast<DWORD>(cmd.length());
                         start = found + ARRAYSIZE(replace) - 1;
