@@ -9,17 +9,6 @@
 
 #include <wchar.h>
 
-namespace {
-    int GetEnvironmentInt(LPCWSTR name, int def = 0)
-    {
-        wchar_t value[100] = L"";
-        if (GetEnvironmentVariableW(name, value) != 0)
-            return _wtoi(value);
-        else
-            return def;
-    }
-}
-
 extern "C" {
     decltype(&ReadConsoleW) pOrigReadConsoleW = nullptr;
 
@@ -128,18 +117,28 @@ extern "C" {
                     repeat = false;
             }
 
-            if (GetEnvironmentInt(L"RADLINE_TILDE", 1))
+            if (*lpNumberOfCharsRead > 2 && GetEnvironmentInt(L"RADLINE_TILDE", 1))
             {
-                const wchar_t replace[] = L" %USERPROFILE%";
+                const wchar_t replace[] = L"%USERPROFILE%";
                 TCHAR* start = reinterpret_cast<TCHAR*>(lpBuffer);
-                TCHAR* found;
-                while ((found = wcsstr(start, L" ~")) != nullptr)
+                TCHAR* found = start;
+                while ((found == lpBuffer && (wcsncmp(found, L"~", 1) == 0 || wcsncmp(found, L"\"~", 2) == 0))
+                    || ((found = wcsstr(start, L" ~")) != nullptr || (found = wcsstr(start, L" \"~")) != nullptr)
+                    && (found - reinterpret_cast<TCHAR*>(lpBuffer)) < *lpNumberOfCharsRead)
                 {
-                    bufstring cmd(reinterpret_cast<TCHAR*>(lpBuffer), nNumberOfCharsToRead, *lpNumberOfCharsRead);
-                    const wchar_t* w = cmd.begin() + *lpNumberOfCharsRead - 2;
-                    cmd.replace(found, 2, replace);
-                    *lpNumberOfCharsRead = static_cast<DWORD>(cmd.length());
-                    start = found + ARRAYSIZE(replace) - 1;
+                    if (found[0] == L' ') ++found;
+                    if (found[0] == L'\"') ++found;
+                    //assert(found[0] == L'~');
+                    if (found[1] == L'\r' || found[1] == L'\\' || found[1] == L' ' || found[1] == L'\"')
+                    {
+                        bufstring cmd(reinterpret_cast<TCHAR*>(lpBuffer), nNumberOfCharsToRead, *lpNumberOfCharsRead);
+                        const wchar_t* w = cmd.begin() + *lpNumberOfCharsRead - 2;
+                        cmd.replace(found, 1, replace);
+                        *lpNumberOfCharsRead = static_cast<DWORD>(cmd.length());
+                        start = found + ARRAYSIZE(replace) - 1;
+                    }
+                    else
+                        start = found + 1;
                 }
             }
 

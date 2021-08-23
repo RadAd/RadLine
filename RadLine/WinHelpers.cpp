@@ -71,6 +71,9 @@ std::vector<std::wstring> findFiles(const std::wstring& s, FindFilesE filter)
     std::wstring FullName(s);
     FullName.erase(std::remove(FullName.begin(), FullName.end(), L'\"'), FullName.end());
 
+    if (FullName.compare(0, 2, L"~\\") == 0 && GetEnvironmentInt(L"RADLINE_TILDE", 1))
+        FullName.replace(0, 1, L"%USERPROFILE%");
+
 #if 1
     {
         wchar_t FullNameS[MAX_PATH];

@@ -28,6 +28,15 @@ inline DWORD GetEnvironmentVariableA(LPCSTR lpName, std::vector<char>& buffer)
     return GetEnvironmentVariableA(lpName, buffer.data(), (DWORD)buffer.size());
 }
 
+inline int GetEnvironmentInt(LPCWSTR name, int def = 0)
+{
+    wchar_t value[100] = L"";
+    if (GetEnvironmentVariableW(name, value) != 0)
+        return _wtoi(value);
+    else
+        return def;
+}
+
 inline COORD GetConsoleCursorPosition(const HANDLE hStdOutput)
 {
     CONSOLE_SCREEN_BUFFER_INFO csbi = {};
