@@ -121,15 +121,13 @@ extern "C" {
             {
                 const wchar_t replace[] = L"%USERPROFILE%";
                 TCHAR* start = reinterpret_cast<TCHAR*>(lpBuffer);
-                TCHAR* found = start;
-                while ((found == lpBuffer && (wcsncmp(found, L"~", 1) == 0 || wcsncmp(found, L"\"~", 2) == 0))
-                    || ((found = wcsstr(start, L" ~")) != nullptr || (found = wcsstr(start, L" \"~")) != nullptr)
+                TCHAR* found;
+                while ((found = wcschr(start, L'~')) != nullptr
                     && (found - reinterpret_cast<TCHAR*>(lpBuffer)) < *lpNumberOfCharsRead)
                 {
-                    if (found[0] == L' ') ++found;
-                    if (found[0] == L'\"') ++found;
-                    //assert(found[0] == L'~');
-                    if (found[1] == L'\r' || found[1] == L'\\' || found[1] == L' ' || found[1] == L'\"')
+                    const int i = found - reinterpret_cast<TCHAR*>(lpBuffer);
+                    if ((i == 0 || (i >= 1 && wcschr(L" =", found[-1]) != nullptr) || (i >= 2 && found[-1] == L'\"' && wcschr(L" =", found[-2]) != nullptr))
+                        && wcschr(L"\r\\ \"", found[1]) != nullptr)
                     {
                         bufstring cmd(reinterpret_cast<TCHAR*>(lpBuffer), nNumberOfCharsToRead, *lpNumberOfCharsRead);
                         cmd.replace(found, 1, replace);
