@@ -125,7 +125,7 @@ extern "C" {
                 while ((found = wcschr(start, L'~')) != nullptr
                     && (found - reinterpret_cast<TCHAR*>(lpBuffer)) < *lpNumberOfCharsRead)
                 {
-                    const int i = found - reinterpret_cast<TCHAR*>(lpBuffer);
+                    const ptrdiff_t i = found - reinterpret_cast<TCHAR*>(lpBuffer);
                     if ((i == 0 || (i >= 1 && wcschr(L" =", found[-1]) != nullptr) || (i >= 2 && found[-1] == L'\"' && wcschr(L" =", found[-2]) != nullptr))
                         && wcschr(L"\r\\ \"", found[1]) != nullptr)
                     {
