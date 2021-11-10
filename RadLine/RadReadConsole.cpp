@@ -142,14 +142,25 @@ extern "C" {
             // nNumberOfCharsToRead == 1023 when used for "set /p"
             if (nNumberOfCharsToRead != 1023 && *lpNumberOfCharsRead > 2)
             {
+                wchar_t pre[100] = L"";
+                GetEnvironmentVariableW(L"RADLINE_PRE", pre);
                 wchar_t post[100] = L"";
                 GetEnvironmentVariableW(L"RADLINE_POST", post);
-                if (post[0] != TEXT('\0'))
+                if (pre[0] != TEXT('\0') || post[0] != TEXT('\0'))
                 {
                     bufstring cmd(reinterpret_cast<TCHAR*>(lpBuffer), nNumberOfCharsToRead, *lpNumberOfCharsRead);
-                    const wchar_t* w = cmd.begin() + *lpNumberOfCharsRead - 2;
-                    cmd.insert(w, post);
-                    cmd.insert(w, L"& ");
+                    if (pre[0] != TEXT('\0'))
+                    {
+                        const wchar_t* w = cmd.begin();
+                        cmd.insert(w, L"& ");
+                        cmd.insert(w, pre);
+                    }
+                    if (post[0] != TEXT('\0'))
+                    {
+                        const wchar_t* w = cmd.begin() + cmd.length() - 2;
+                        cmd.insert(w, post);
+                        cmd.insert(w, L"& ");
+                    }
                     *lpNumberOfCharsRead = static_cast<DWORD>(cmd.length());
                 }
             }

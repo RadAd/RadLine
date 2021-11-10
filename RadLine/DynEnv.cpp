@@ -1,5 +1,8 @@
 #include <Windows.h>
 #include <stdio.h>
+#include <wchar.h>
+
+#include "bufstring.h"
 
 DWORD RadExpandEnvironmentStrings(_In_ LPWSTR lpSrc, _In_ DWORD nSize)
 {
@@ -38,6 +41,20 @@ DWORD ReadFromHandle(HANDLE hReadPipe, _Out_writes_to_opt_(nSize, return +1) LPW
     }
     lpBuffer[dwReadTotal] = L'\0';
     return dwReadTotal;
+}
+
+DWORD GetUserCurrentDirectory(_Out_writes_to_(nSize, return +1) LPWSTR lpBuffer, _In_ DWORD nSize)
+{
+    wchar_t UserProfile[MAX_PATH];
+    DWORD len = GetEnvironmentVariableW(L"USERPROFILE", UserProfile, ARRAYSIZE(UserProfile));
+    DWORD ret = GetCurrentDirectoryW(nSize, lpBuffer);
+    if (ret >= len && _wcsnicmp(UserProfile, lpBuffer, len) == 0)
+    {
+        bufstring s(lpBuffer, nSize, ret);
+        s.replace(s.begin(), len, L"~", 1);
+        ret = s.length();
+    }
+    return ret;
 }
 
 extern "C" {
@@ -110,16 +127,55 @@ extern "C" {
                 lpBuffer[ret] = L'\0';
             }
         }
+        else if (lpName != nullptr && _wcsicmp(lpName, L"RADLINE_LOADED") == 0)
+        {
+            wcscpy_s(lpBuffer, nSize, L"1");
+            ret = static_cast<DWORD>(wcslen(lpBuffer));
+        }
         else if (lpName != nullptr && _wcsicmp(lpName, L"__PID__") == 0)
         {
             DWORD pid = GetCurrentProcessId();
             ret = wsprintf(lpBuffer, L"%d", pid);
         }
+        else if (lpName != nullptr && _wcsicmp(lpName, L"__TICK__") == 0)
+        {
+            DWORD tick = GetTickCount();
+            ret = wsprintf(lpBuffer, L"%d", tick);
+        }
+        else if (lpName != nullptr && _wcsicmp(lpName, L"USERCD") == 0)
+        {
+            ret = GetUserCurrentDirectory(lpBuffer, nSize);
+        }
+        else if (lpName != nullptr && _wcsicmp(lpName, L"RAWPROMPT") == 0)
+        {
+            ret = pOrigGetEnvironmentVariableW(L"PROMPT", lpBuffer, nSize);
+        }
         else
         {
             ret = pOrigGetEnvironmentVariableW(lpName, lpBuffer, nSize);
             if (lpName != nullptr && lpBuffer != nullptr && wcscmp(lpName, L"PROMPT") == 0)
-                RadExpandEnvironmentStrings(lpBuffer, nSize);
+            {
+                LPWSTR e = wcsstr(lpBuffer, L"$U");
+                if (e != nullptr)
+                {
+                    wchar_t UserDirectory[MAX_PATH];
+                    DWORD len = GetUserCurrentDirectory(UserDirectory, ARRAYSIZE(UserDirectory));
+
+                    bufstring str(lpBuffer, nSize, ret);
+                    str.replace(e, 2, UserDirectory, len);
+                    ret = static_cast<DWORD>(str.length());
+                }
+                e = wcsstr(lpBuffer, L"$-");
+                if (e != nullptr)
+                {
+                    DWORD pid;
+                    DWORD count = GetConsoleProcessList(&pid, 1);
+                    wcscpy_s(e + count, nSize - (e - lpBuffer) - count, e + 2);
+                    wmemset(e, L'-', count);
+                    ret += count - 2;
+                }
+                //ret = RadExpandEnvironmentStrings(lpBuffer, nSize);
+            }
         }
         return ret;
     }

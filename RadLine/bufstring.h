@@ -109,6 +109,20 @@ public:
         assert(m_buf[m_len] == L'\0');
     }
 
+    void replace(const wchar_t* b, size_t l, const wchar_t* s, size_t nl)
+    {
+        assert(b >= begin());
+        assert(b <= end());
+        wchar_t* lb = begin() + (b - begin());
+        assert(l >= 0);
+        assert((lb + l) <= end());
+        int d = (int) (nl - l);
+        wmemmove(lb + l + d, lb + l, end() - lb - l + 1);
+        wmemmove(lb, s, nl);
+        m_len += d;
+        assert(m_buf[m_len] == L'\0');
+    }
+
     void append(const wchar_t* w, size_t l)
     {
         wmemmove(end(), w, l);

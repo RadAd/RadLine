@@ -169,20 +169,49 @@ command_fn = {
     pushd = FindPotentialDirs,
 }
 
-setmetatable(command_fn, {
-    __index = function (t)
-        return t._default
+function LookUpExt(t, key)
+    local pathext = split(GetEnv("PATHEXT"), ";")
+    for _,i in ipairs(pathext) do
+        local f = rawget(t, (key..i):lower())
+        if f then
+            return f
+        end
     end
+    return rawget(t, "_default")
+end
+
+setmetatable(command_fn, {
+    __index = LookUpExt
 })
+
+other_env = {
+    "%CMDCMDLINE%", "%CMDEXTVERSION%", "%DATE%", "%ERRORLEVEL%", "%RANDOM%", "%TIME%",
+    "%FIRMWARE_TYPE%",
+    "%__APPDIR__%", "%__CD__%", "%__PID__%", "%__TICK__%", "%RAWPROMPT%", "%RADLINE_LOADED%",
+    "%=ExitCode%", "%=ExitCodeAscii%", "%=C:%", "%=D:%", "%=E:%", "%=F:%"
+}
+
+function GetCmdOutput(cmd)
+    local d = {}
+    local f1 = io.popen(cmd, 'r')
+    for line in f1:lines() do
+        d[#d+1] = line
+    end
+    f1:close()
+    return d
+end
 
 function FindPotential(params, p)
     local s,i = GetParam(params, p)
     local e = FindEnvBegin(s)
 
     if e then
-        return FindEnv(s:sub(e + 1), true), e
+        local f = {}
+        concat(f, FindEnv(s:sub(e + 1), true))
+        concat_if(f, s:sub(e):lower(), other_env)
+        return f, e
     elseif p == 1 or command_sep[params[p - 1]] then
-        local f ={}
+        local f = {}
         if i == 1 then
             concat_if(f, s:lower(), internal)
             concat(f, FindFiles(s.."*", FindFilesE.DirOnly))
