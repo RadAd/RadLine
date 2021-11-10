@@ -123,7 +123,7 @@ extern "C" {
                 TCHAR* start = reinterpret_cast<TCHAR*>(lpBuffer);
                 TCHAR* found;
                 while ((found = wcschr(start, L'~')) != nullptr
-                    && (found - reinterpret_cast<TCHAR*>(lpBuffer)) < *lpNumberOfCharsRead)
+                    && static_cast<DWORD>(found - reinterpret_cast<TCHAR*>(lpBuffer)) < *lpNumberOfCharsRead)
                 {
                     const ptrdiff_t i = found - reinterpret_cast<TCHAR*>(lpBuffer);
                     if ((i == 0 || (i >= 1 && wcschr(L" =", found[-1]) != nullptr) || (i >= 2 && found[-1] == L'\"' && wcschr(L" =", found[-2]) != nullptr))
