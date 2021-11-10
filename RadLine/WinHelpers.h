@@ -37,6 +37,14 @@ inline int GetEnvironmentInt(LPCWSTR name, int def = 0)
         return def;
 }
 
+inline DWORD ExpandEnvironmentStrings(_In_ LPWSTR lpSrc, _In_ DWORD nSize)
+{
+    WCHAR strBuffer[2048];
+    wcscpy_s(strBuffer, lpSrc);
+    strBuffer[ARRAYSIZE(strBuffer) - 1] = L'\0';
+    return ExpandEnvironmentStrings(strBuffer, lpSrc, nSize);
+}
+
 inline COORD GetConsoleCursorPosition(const HANDLE hStdOutput)
 {
     CONSOLE_SCREEN_BUFFER_INFO csbi = {};

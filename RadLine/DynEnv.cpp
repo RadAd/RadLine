@@ -1,15 +1,14 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <wchar.h>
+#include <shlwapi.h>
+
+typedef decltype(&GetEnvironmentVariableW) FuncGetEnvironmentVariableW;
+
+extern HMODULE g_hModule;
 
 #include "bufstring.h"
-
-DWORD RadExpandEnvironmentStrings(_In_ LPWSTR lpSrc, _In_ DWORD nSize)
-{
-    WCHAR strBuffer[2048];
-    wcscpy_s(strBuffer, lpSrc);
-    return ExpandEnvironmentStrings(strBuffer, lpSrc, nSize);
-}
+#include "WinHelpers.h"
 
 DWORD ReadFromHandle(HANDLE hReadPipe, _Out_writes_to_opt_(nSize, return +1) LPWSTR lpBuffer, _In_ DWORD nSize)
 {
@@ -46,20 +45,20 @@ DWORD ReadFromHandle(HANDLE hReadPipe, _Out_writes_to_opt_(nSize, return +1) LPW
 DWORD GetUserCurrentDirectory(_Out_writes_to_(nSize, return +1) LPWSTR lpBuffer, _In_ DWORD nSize)
 {
     wchar_t UserProfile[MAX_PATH];
-    DWORD len = GetEnvironmentVariableW(L"USERPROFILE", UserProfile, ARRAYSIZE(UserProfile));
+    DWORD len = GetEnvironmentVariableW(L"USERPROFILE", UserProfile);
     DWORD ret = GetCurrentDirectoryW(nSize, lpBuffer);
     if (ret >= len && _wcsnicmp(UserProfile, lpBuffer, len) == 0)
     {
         bufstring s(lpBuffer, nSize, ret);
         s.replace(s.begin(), len, L"~", 1);
-        ret = s.length();
+        ret = static_cast<DWORD>(s.length());
     }
     return ret;
 }
 
 extern "C" {
 
-    decltype(&GetEnvironmentVariableW) pOrigGetEnvironmentVariableW = nullptr;
+    FuncGetEnvironmentVariableW pOrigGetEnvironmentVariableW = nullptr;
 
     __declspec(dllexport)
     DWORD WINAPI RadGetEnvironmentVariableW(
@@ -71,17 +70,17 @@ extern "C" {
         DWORD ret = 0;
         const size_t len = lpName != nullptr ? wcslen(lpName) : 0;
 
-        if (lpBuffer == nullptr)
+        if (lpBuffer == nullptr || lpName == nullptr)
             // TODO Handle the case when lpBuffer == nullptr
             ret = pOrigGetEnvironmentVariableW(lpName, lpBuffer, nSize);
-        else if (lpName != nullptr && lpName[0] == L'(' && lpName[len - 1] == L')')
+        else if (lpName[0] == L'(' && lpName[len - 1] == L')')
         {
             WCHAR strCmdLine[2048];
             wcsncpy_s(strCmdLine, ARRAYSIZE(strCmdLine), lpName + 1, len - 2);
             for (LPWSTR p = strCmdLine; *p != L'\0'; ++p)
                 if (*p == L'!')
                     *p = L'%';
-            RadExpandEnvironmentStrings(strCmdLine, ARRAYSIZE(strCmdLine));
+            ExpandEnvironmentStrings(strCmdLine, ARRAYSIZE(strCmdLine));
 
             STARTUPINFO            siStartupInfo = { sizeof(siStartupInfo) };
             siStartupInfo.dwFlags = STARTF_USESTDHANDLES;
@@ -127,33 +126,41 @@ extern "C" {
                 lpBuffer[ret] = L'\0';
             }
         }
-        else if (lpName != nullptr && _wcsicmp(lpName, L"RADLINE_LOADED") == 0)
+        else if (_wcsicmp(lpName, L"RADLINE_LOADED") == 0)
         {
             wcscpy_s(lpBuffer, nSize, L"1");
             ret = static_cast<DWORD>(wcslen(lpBuffer));
         }
-        else if (lpName != nullptr && _wcsicmp(lpName, L"__PID__") == 0)
+        else if (_wcsicmp(lpName, L"RADLINE_DIR") == 0)
+        {
+            GetModuleFileNameW(g_hModule, lpBuffer, nSize);
+            wchar_t* const pFileName = PathFindFileNameW(lpBuffer) - 1;
+            *pFileName = L'\0';
+            ret = static_cast<DWORD>(pFileName - lpBuffer);
+        }
+        else if (_wcsicmp(lpName, L"__PID__") == 0)
         {
             DWORD pid = GetCurrentProcessId();
             ret = wsprintf(lpBuffer, L"%d", pid);
         }
-        else if (lpName != nullptr && _wcsicmp(lpName, L"__TICK__") == 0)
+        else if (_wcsicmp(lpName, L"__TICK__") == 0)
         {
             DWORD tick = GetTickCount();
             ret = wsprintf(lpBuffer, L"%d", tick);
         }
-        else if (lpName != nullptr && _wcsicmp(lpName, L"USERCD") == 0)
+        else if (_wcsicmp(lpName, L"USERCD") == 0)
         {
             ret = GetUserCurrentDirectory(lpBuffer, nSize);
         }
-        else if (lpName != nullptr && _wcsicmp(lpName, L"RAWPROMPT") == 0)
+        else if (_wcsicmp(lpName, L"RAWPROMPT") == 0)
         {
             ret = pOrigGetEnvironmentVariableW(L"PROMPT", lpBuffer, nSize);
         }
         else
         {
             ret = pOrigGetEnvironmentVariableW(lpName, lpBuffer, nSize);
-            if (lpName != nullptr && lpBuffer != nullptr && wcscmp(lpName, L"PROMPT") == 0)
+
+            if (wcscmp(lpName, L"PROMPT") == 0)
             {
                 LPWSTR e = wcsstr(lpBuffer, L"$U");
                 if (e != nullptr)
@@ -174,7 +181,7 @@ extern "C" {
                     wmemset(e, L'-', count);
                     ret += count - 2;
                 }
-                //ret = RadExpandEnvironmentStrings(lpBuffer, nSize);
+                //ret = ExpandEnvironmentStrings(lpBuffer, nSize);
             }
         }
         return ret;

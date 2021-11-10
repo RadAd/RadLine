@@ -185,9 +185,9 @@ setmetatable(command_fn, {
 })
 
 other_env = {
-    "%CMDCMDLINE%", "%CMDEXTVERSION%", "%DATE%", "%ERRORLEVEL%", "%RANDOM%", "%TIME%",
-    "%FIRMWARE_TYPE%",
-    "%__APPDIR__%", "%__CD__%", "%__PID__%", "%__TICK__%", "%RAWPROMPT%", "%RADLINE_LOADED%",
+    "%CD%", "%CMDCMDLINE%", "%CMDEXTVERSION%", "%DATE%", "%ERRORLEVEL%", "%RANDOM%", "%TIME%",
+    "%FIRMWARE_TYPE%", "%HighestNumaNodeNumber%",
+    "%__APPDIR__%", "%__CD__%", "%__PID__%", "%__TICK__%", "%RAWPROMPT%", "%RADLINE_LOADED%", "%RADLINE_DIR%",
     "%=ExitCode%", "%=ExitCodeAscii%", "%=C:%", "%=D:%", "%=E:%", "%=F:%"
 }
 

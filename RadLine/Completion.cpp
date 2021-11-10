@@ -18,6 +18,49 @@
 extern HMODULE g_hModule;
 
 namespace {
+    bool LoadLuaModules(lua_State* lua, std::wstring& msg)
+    {
+        {
+            // Make the dynamic environment variable RADLINE_DIR non-dynamic so that ExpandEnvironmentStrings works
+            WCHAR strRadlineDir[MAX_PATH];
+            GetEnvironmentVariableW(L"RADLINE_DIR", strRadlineDir);
+            strRadlineDir[MAX_PATH - 1] = L'\0';
+            SetEnvironmentVariableW(L"RADLINE_DIR", strRadlineDir);
+        }
+
+        const char* files[] = {
+            "%RADLINE_DIR%\\RadLine.lua",
+#ifdef _DEBUG
+            "%RADLINE_DIR%\\..\\..\\RadLine.lua",
+#endif
+            "%ProgramData%\\RadSoft\\RadLine\\RadLine.lua",
+            "%RADLINE_DIR%\\UserRadLine.lua",
+#ifdef _DEBUG
+            "%RADLINE_DIR%\\..\\..\\UserRadLine.lua",
+#endif
+            "%ProgramData%\\RadSoft\\RadLine\\UserRadLine.lua",
+            "%%LOCALAPPDATA%\\RadSoft\\RadLine\\UserRadLine.lua",
+        };
+
+        for (const char* f : files)
+        {
+            char strFile[MAX_PATH];
+            ExpandEnvironmentStringsA(f, strFile, ARRAYSIZE(strFile));
+            if (FileExists(strFile))
+            {
+                if (luaL_dofile(lua, strFile) != LUA_OK)
+                {
+                    msg = LuaPopString(lua);
+                    SetEnvironmentVariableW(L"RADLINE_DIR", nullptr);
+                    return false;
+                }
+            }
+            assert(lua_gettop(lua) == 0);
+        }
+        SetEnvironmentVariableW(L"RADLINE_DIR", nullptr);
+        return true;
+    }
+
     std::wstring_view substr(const bufstring& s, bufstring::const_iterator b, bufstring::const_iterator e)
     {
         assert(e >= b);
@@ -238,35 +281,8 @@ namespace {
         lua_pushcfunction(L.get(), l_FindRegKey);
         lua_setglobal(L.get(), "FindRegKey");
 
-        char strFile[MAX_PATH];
-        GetModuleFileNameA(g_hModule, strFile, ARRAYSIZE(strFile));
-        char* const pFileName = PathFindFileNameA(strFile);
-        const rsize_t strFileLen = ARRAYSIZE(strFile) - (pFileName - strFile);
-
-        const char* files[] = {
-            "RadLine.lua",
-#ifdef _DEBUG
-            "..\\..\\RadLine.lua",
-#endif
-            "UserRadLine.lua",
-#ifdef _DEBUG
-            "..\\..\\UserRadLine.lua",
-#endif
-        };
-
-        for (const char* f : files)
-        {
-            strcpy_s(pFileName, strFileLen, f);
-            if (FileExists(strFile))
-            {
-                if (luaL_dofile(L.get(), strFile) != LUA_OK)
-                {
-                    msg = LuaPopString(L.get());
-                    return std::vector<std::wstring>();
-                }
-            }
-            assert(lua_gettop(L.get()) == 0);
-        }
+        if (!LoadLuaModules(L.get(), msg))
+            return {};
 
         std::vector<std::wstring> all;
 
