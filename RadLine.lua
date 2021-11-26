@@ -209,7 +209,7 @@ function FindPotential(params, p)
         local f = {}
         concat(f, FindEnv(s:sub(e + 1), true))
         concat_if(f, s:sub(e):lower(), other_env)
-        return f, e
+        return f, (e + i - 1)
     elseif p == 1 or command_sep[params[p - 1]] then
         local f = {}
         if i == 1 then

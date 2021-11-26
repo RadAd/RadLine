@@ -476,7 +476,9 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
                 {
                     openquote = true;
                     ++r.begin;
-                    --rp;
+                    assert(rp > 0);
+                    if (rp > 0)
+                        --rp;
                 }
                 else if (match.find(L' ') != std::wstring::npos)
                 {
@@ -505,7 +507,7 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
                 r.end = nr.begin + match.length();
             }
 
-            bool closequote = openquote && r.back() != L'"';
+            bool closequote = openquote && list.size() == 1 && r.back() != L'"';
             if (closequote)
             {
                 line.insert(r.end, L'\"');
