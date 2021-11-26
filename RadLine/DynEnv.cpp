@@ -124,6 +124,8 @@ extern "C" {
                         lpBuffer[i] = L' ';
 
                 lpBuffer[ret] = L'\0';
+
+                ret = ExpandEnvironmentStrings(lpBuffer, nSize);
             }
         }
         else if (_wcsicmp(lpName, L"RADLINE_LOADED") == 0)

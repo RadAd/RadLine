@@ -9,6 +9,16 @@
 
 #include <wchar.h>
 
+WCHAR* FindMaskedChar(WCHAR* s, DWORD nSize, ULONG uMask)
+{
+    for (DWORD i = 0; i < nSize; ++i)
+    {
+        if (s[i] <= 0x1F && (uMask & (1 << s[i])))
+            return s + i;
+    }
+    return nullptr;
+}
+
 extern "C" {
     decltype(&ReadConsoleW) pOrigReadConsoleW = nullptr;
 
@@ -45,13 +55,11 @@ extern "C" {
             {
                 if (GetEnvironmentInt(L"RADLINE_AUTO_TERMINATE_BATCH"))
                 {
-                    CONSOLE_SCREEN_BUFFER_INFO csbi = {};
-                    GetConsoleScreenBufferInfo(hStdOutput, &csbi);
+                    const CONSOLE_SCREEN_BUFFER_INFO csbi = GetConsoleScreenBufferInfo(hStdOutput);
 
                     std::vector<WCHAR> buf(27);
 
-                    COORD pos = GetConsoleCursorPosition(hStdOutput);
-                    pos = Add(pos, -(SHORT) buf.size(), csbi.dwSize.X);
+                    const COORD pos = Add(csbi.dwCursorPosition, -(SHORT) buf.size(), csbi.dwSize.X);
 
                     DWORD read = 0;
                     ReadConsoleOutputCharacterW(hStdOutput, buf.data(), (DWORD) buf.size(), pos, &read);
@@ -90,25 +98,70 @@ extern "C" {
             BOOL repeat = TRUE;
             Extra extra = {};
 
+            pInputControl->dwCtrlWakeupMask |= 1 << ('e' - 'a' + 1); // Ctrl+e
+
             while (repeat)
             {
+                const COORD origpos = GetConsoleCursorPosition(hStdOutput);
                 r = pOrigReadConsoleW(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
+                CleanUpExtra(hStdOutput, &extra);
 
                 if (r)
                 {
-                    WCHAR* const pStr = reinterpret_cast<TCHAR*>(lpBuffer);
-                    WCHAR* const pTab = wmemchr(pStr, c, *lpNumberOfCharsRead);
-                    if (pTab != nullptr)
+                    const CONSOLE_SCREEN_BUFFER_INFO csbi = GetConsoleScreenBufferInfo(hStdOutput);
+                    const COORD startpos = Add(origpos, - (SHORT) pInputControl->nInitialChars, csbi.dwSize.X);
+                    size_t CursorOffset = Diff(csbi.dwCursorPosition, startpos, csbi.dwSize.X);
+
+                    if (CursorOffset < *lpNumberOfCharsRead)
                     {
+                        WCHAR* const pStr = reinterpret_cast<TCHAR*>(lpBuffer);
+                        WCHAR* const pChar = pStr + CursorOffset;
+                        const WCHAR cChar = *pChar;
+
                         // Looks like a bug but the tab character overwrites instead of inserts, but the length is still increased by one
-                        CONSOLE_SCREEN_BUFFER_INFO csbi = {};
-                        GetConsoleScreenBufferInfo(hStdOutput, &csbi);
                         DWORD read = 0;
-                        ReadConsoleOutputCharacter(hStdOutput, pTab, 1, csbi.dwCursorPosition, &read);
+                        ReadConsoleOutputCharacter(hStdOutput, pChar, 1, csbi.dwCursorPosition, &read);
                         --*lpNumberOfCharsRead;
 
-                        CleanUpExtra(hStdOutput, &extra);
-                        pInputControl->nInitialChars = (ULONG) Complete(hStdOutput, pStr, nNumberOfCharsToRead, *lpNumberOfCharsRead, pTab - pStr, &extra, csbi.dwSize);
+                        if (cChar == c)
+                        {
+                            bufstring line(pStr, nNumberOfCharsToRead, *lpNumberOfCharsRead);
+                            Complete(hStdOutput, line, &CursorOffset, &extra, csbi.dwSize);
+                            pInputControl->nInitialChars = (ULONG) line.length();
+                        }
+                        else if (cChar == ('e' - 'a' + 1))
+                        {
+                            wchar_t CurrentDirectory[MAX_PATH];
+                            GetCurrentDirectoryW(ARRAYSIZE(CurrentDirectory), CurrentDirectory);
+                            SetEnvironmentVariableW(L"CD", CurrentDirectory);
+
+                            pStr[*lpNumberOfCharsRead] = L'\0';
+                            pInputControl->nInitialChars = ExpandEnvironmentStrings(pStr, nNumberOfCharsToRead) - 1;
+
+                            SetEnvironmentVariableW(L"CD", nullptr);
+
+                            if (CursorOffset != 0)
+                            {
+                                const COORD pos = Add(csbi.dwCursorPosition, -(SHORT) CursorOffset, csbi.dwSize.X);
+                                SetConsoleCursorPosition(hStdOutput, pos);
+                            }
+
+                            WriteConsole(hStdOutput, pStr, pInputControl->nInitialChars, nullptr, 0);
+                            CursorOffset = pInputControl->nInitialChars;
+                        }
+                        else
+                        {
+                            pInputControl->nInitialChars = *lpNumberOfCharsRead;
+                        }
+
+                        // Leave cursor at end of line, pOrigReadConsoleW has no way of starting with the cursor in the middle
+                        if (pInputControl->nInitialChars != CursorOffset)
+                        {
+                            COORD pos = GetConsoleCursorPosition(hStdOutput);
+                            pos = Add(pos, (SHORT) (pInputControl->nInitialChars - CursorOffset), csbi.dwSize.X);
+                            SetConsoleCursorPosition(hStdOutput, pos);
+                        }
+                        assert(GetConsoleCursorPosition(hStdOutput) == Add(startpos, (SHORT) CursorOffset, csbi.dwSize.X));
                     }
                     else
                         repeat = false;
@@ -152,20 +205,22 @@ extern "C" {
                     if (pre[0] != TEXT('\0'))
                     {
                         const wchar_t* w = cmd.begin();
-                        cmd.insert(w, L"& ");
+                        cmd.insert(w, L"&(");
                         cmd.insert(w, pre);
                     }
+                    else
+                        cmd.insert(cmd.begin(), L"(");
                     if (post[0] != TEXT('\0'))
                     {
-                        const wchar_t* w = cmd.begin() + cmd.length() - 2;
+                        const wchar_t* w = cmd.end() - 2;
                         cmd.insert(w, post);
-                        cmd.insert(w, L"& ");
+                        cmd.insert(w, L")&");
                     }
+                    else
+                        cmd.insert(cmd.end() - 2, L")");
                     *lpNumberOfCharsRead = static_cast<DWORD>(cmd.length());
                 }
             }
-
-            CleanUpExtra(hStdOutput, &extra);
 
             return r;
         }

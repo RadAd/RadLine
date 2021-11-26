@@ -550,22 +550,6 @@ void Complete(const HANDLE hConsoleOutput, bufstring& line, size_t* i, Extra* ex
     }
 }
 
-size_t Complete(const HANDLE hConsoleOutput, wchar_t* pStr, size_t nSize, size_t nNumberOfCharsRead, size_t i, Extra* extra, const COORD size)
-{
-    bufstring line(pStr, nSize, nNumberOfCharsRead);
-    Complete(hConsoleOutput, line, &i, extra, size);
-
-    // Leave cursor at end of line, pOrigReadConsoleW has no way of starting with the cursor in the middle
-    if (line.length() != i)
-    {
-        COORD pos = GetConsoleCursorPosition(hConsoleOutput);
-        pos = Add(pos, (SHORT) (line.length() - i), size.X);
-        SetConsoleCursorPosition(hConsoleOutput, pos);
-    }
-
-    return line.length();
-}
-
 void CleanUpExtra(const HANDLE hConsoleOutput, Extra* extra)
 {
     if (extra->length != 0)

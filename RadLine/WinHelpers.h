@@ -45,10 +45,16 @@ inline DWORD ExpandEnvironmentStrings(_In_ LPWSTR lpSrc, _In_ DWORD nSize)
     return ExpandEnvironmentStrings(strBuffer, lpSrc, nSize);
 }
 
-inline COORD GetConsoleCursorPosition(const HANDLE hStdOutput)
+inline CONSOLE_SCREEN_BUFFER_INFO GetConsoleScreenBufferInfo(const HANDLE hStdOutput)
 {
     CONSOLE_SCREEN_BUFFER_INFO csbi = {};
     GetConsoleScreenBufferInfo(hStdOutput, &csbi);
+    return csbi;
+}
+
+inline COORD GetConsoleCursorPosition(const HANDLE hStdOutput)
+{
+    const CONSOLE_SCREEN_BUFFER_INFO csbi = GetConsoleScreenBufferInfo(hStdOutput);
     return csbi.dwCursorPosition;
 }
 
@@ -68,6 +74,11 @@ inline COORD Add(COORD p, SHORT d, SHORT cols)
 {
     p.X += d;
     return normalize(p, cols);
+}
+
+inline SHORT Diff(COORD a, COORD b, SHORT cols)
+{
+    return a.X - b.X + (a.Y - b.Y) * cols;
 }
 
 inline bool operator==(const COORD& a, const COORD& p)
