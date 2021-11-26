@@ -28,16 +28,11 @@ namespace {
             SetEnvironmentVariableW(L"RADLINE_DIR", strRadlineDir);
         }
 
+        // TODO Should it load all RadLine.lua files or only first found (same for UserRadLine.lua)
         const char* files[] = {
             "%RADLINE_DIR%\\RadLine.lua",
-#ifdef _DEBUG
-            "%RADLINE_DIR%\\..\\..\\RadLine.lua",
-#endif
             "%ProgramData%\\RadSoft\\RadLine\\RadLine.lua",
             "%RADLINE_DIR%\\UserRadLine.lua",
-#ifdef _DEBUG
-            "%RADLINE_DIR%\\..\\..\\UserRadLine.lua",
-#endif
             "%ProgramData%\\RadSoft\\RadLine\\UserRadLine.lua",
             "%%LOCALAPPDATA%\\RadSoft\\RadLine\\UserRadLine.lua",
         };

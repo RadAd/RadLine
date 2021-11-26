@@ -23,4 +23,17 @@
   <ItemGroup>
     <ResourceCompile Include="RadLine.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Scripts">
+      <UniqueIdentifier>{c6879d98-f0c9-451c-b6dd-dd36f8c1922c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="..\RadLine.lua">
+      <Filter>Scripts</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="..\UserRadLine.lua">
+      <Filter>Scripts</Filter>
+    </CopyFileToFolders>
+  </ItemGroup>
 </Project>
