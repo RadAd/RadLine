@@ -31,28 +31,6 @@ namespace {
             return CaseInsensitiveLess(s1, s2);
     }
 
-    std::vector<const wchar_t*> Split(wchar_t* s, wchar_t sep)
-    {
-        std::vector<const wchar_t*> list;
-
-        wchar_t* b = s;
-        while (*b != L'\0')
-        {
-            wchar_t* e = wcschr(b, sep);
-            if (e != nullptr)
-                *e = L'\0';
-
-            list.push_back(b);
-
-            if (e != nullptr)
-                b = e + 1;
-            else
-                break;
-        }
-
-        return list;
-    }
-
     inline bool Match(const std::wstring& s, const wchar_t* p, size_t len)
     {
         return (s.length() <= len && _wcsnicmp(s.c_str(), p, s.length()) == 0);
@@ -77,9 +55,9 @@ std::vector<std::wstring> findFiles(const std::wstring& s, FindFilesE filter)
 #if 1
     {
         wchar_t FullNameS[MAX_PATH];
-        GetCurrentDirectoryW(ARRAYSIZE(FullNameS), FullNameS);
+        GetCurrentDirectoryW(FullNameS);
         SetEnvironmentVariableW(L"CD", FullNameS);
-        ExpandEnvironmentStringsW(FullName.c_str(), FullNameS, ARRAYSIZE(FullNameS));
+        ExpandEnvironmentStringsW(FullName.c_str(), FullNameS);
         SetEnvironmentVariableW(L"CD", nullptr);
         FullName = FullNameS;
     }

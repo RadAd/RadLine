@@ -204,6 +204,7 @@
     <ClInclude Include="RadLine.h" />
     <ClInclude Include="RadReadConsole.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="StringUtils.h" />
     <ClInclude Include="WinHelpers.h" />
   </ItemGroup>
   <ItemGroup>

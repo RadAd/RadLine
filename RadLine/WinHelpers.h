@@ -12,10 +12,32 @@ inline BOOL FileExists(LPCSTR szPath)
         !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
+inline BOOL FileExists(LPCWSTR szPath)
+{
+    DWORD dwAttrib = GetFileAttributesW(szPath);
+
+    return (dwAttrib != INVALID_FILE_ATTRIBUTES &&
+        !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+}
+
+template <size_t size>
+inline DWORD GetCurrentDirectoryA(CHAR(&rBuffer)[size])
+{
+    return GetCurrentDirectoryA(size, rBuffer);
+}
+
+template <size_t size>
+inline DWORD GetCurrentDirectoryW(WCHAR(&rBuffer)[size])
+{
+    return GetCurrentDirectoryW(size, rBuffer);
+}
+
 template <size_t size>
 inline DWORD GetEnvironmentVariableW(LPCWSTR lpName, WCHAR (&rBuffer)[size])
 {
-    return GetEnvironmentVariableW(lpName, rBuffer, size);
+    DWORD len = GetEnvironmentVariableW(lpName, rBuffer, size);
+    rBuffer[len] = L'\0';
+    return len;
 }
 
 inline DWORD GetEnvironmentVariableW(LPCWSTR lpName, std::vector<wchar_t>& buffer)
@@ -37,12 +59,22 @@ inline int GetEnvironmentInt(LPCWSTR name, int def = 0)
         return def;
 }
 
+template <size_t size>
+inline DWORD ExpandEnvironmentStringsA(LPCSTR lpSrc, CHAR(&rBuffer)[size])
+{
+    return ExpandEnvironmentStringsW(lpSrc, rBuffer, size);
+}
+
+template <size_t size>
+inline DWORD ExpandEnvironmentStringsW(LPCWSTR lpSrc, WCHAR(&rBuffer)[size])
+{
+    return ExpandEnvironmentStringsW(lpSrc, rBuffer, size);
+}
+
 inline DWORD ExpandEnvironmentStrings(_In_ LPWSTR lpSrc, _In_ DWORD nSize)
 {
-    WCHAR strBuffer[2048];
-    wcscpy_s(strBuffer, lpSrc);
-    strBuffer[ARRAYSIZE(strBuffer) - 1] = L'\0';
-    return ExpandEnvironmentStrings(strBuffer, lpSrc, nSize);
+    std::wstring buffer(lpSrc);
+    return ExpandEnvironmentStrings(buffer.c_str(), lpSrc, nSize);
 }
 
 inline CONSOLE_SCREEN_BUFFER_INFO GetConsoleScreenBufferInfo(const HANDLE hStdOutput)

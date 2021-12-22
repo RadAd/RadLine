@@ -132,7 +132,7 @@ extern "C" {
                         else if (cChar == ('e' - 'a' + 1))
                         {
                             wchar_t CurrentDirectory[MAX_PATH];
-                            GetCurrentDirectoryW(ARRAYSIZE(CurrentDirectory), CurrentDirectory);
+                            GetCurrentDirectoryW(CurrentDirectory);
                             SetEnvironmentVariableW(L"CD", CurrentDirectory);
 
                             pStr[*lpNumberOfCharsRead] = L'\0';

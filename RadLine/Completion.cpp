@@ -8,6 +8,7 @@
 #include <vector>
 #include <algorithm>
 #include <string_view>
+#include <memory>
 #include <cctype>
 
 #include "bufstring.h"
@@ -18,42 +19,44 @@
 extern HMODULE g_hModule;
 
 namespace {
+    void SetLuaPath(lua_State* lua)
+    {
+        WCHAR strRadlineDir[MAX_PATH];
+        GetEnvironmentVariableW(L"RADLINE_DIR", strRadlineDir);
+
+        lua_getglobal(lua, "package");
+        std::wstring cur_path;
+#if 0
+        lua_getfield(lua, -1, "path");
+        cur_path = LuaPopString(lua);
+#endif
+
+        const WCHAR* paths[] = {
+            LR"(%LOCALAPPDATA%\RadSoft\RadLine)",
+            LR"(%ProgramData%\RadSoft\RadLine)",
+            strRadlineDir,
+        };
+        for (const WCHAR* p : paths)
+        {
+            WCHAR strPath[MAX_PATH];
+            ExpandEnvironmentStringsW(p, strPath);
+            if (!cur_path.empty())
+                cur_path += L';';
+            cur_path += strPath;
+            cur_path += LR"(\?;)";
+            cur_path += strPath;
+            cur_path += LR"(\?.lua)";
+        }
+        lua_pushstring(lua, To_utf8(cur_path).c_str());
+        lua_setfield(lua, -2, "path");
+        lua_pop(lua, 1);
+    }
+
     bool LoadLuaModules(lua_State* lua, std::wstring& msg)
     {
-        {
-            // Make the dynamic environment variable RADLINE_DIR non-dynamic so that ExpandEnvironmentStrings works
-            WCHAR strRadlineDir[MAX_PATH];
-            GetEnvironmentVariableW(L"RADLINE_DIR", strRadlineDir);
-            strRadlineDir[MAX_PATH - 1] = L'\0';
-            SetEnvironmentVariableW(L"RADLINE_DIR", strRadlineDir);
-        }
-
-        // TODO Should it load all RadLine.lua files or only first found (same for UserRadLine.lua)
-        const char* files[] = {
-            "%RADLINE_DIR%\\RadLine.lua",
-            "%ProgramData%\\RadSoft\\RadLine\\RadLine.lua",
-            "%RADLINE_DIR%\\UserRadLine.lua",
-            "%ProgramData%\\RadSoft\\RadLine\\UserRadLine.lua",
-            "%%LOCALAPPDATA%\\RadSoft\\RadLine\\UserRadLine.lua",
-        };
-
-        for (const char* f : files)
-        {
-            char strFile[MAX_PATH];
-            ExpandEnvironmentStringsA(f, strFile, ARRAYSIZE(strFile));
-            if (FileExists(strFile))
-            {
-                if (luaL_dofile(lua, strFile) != LUA_OK)
-                {
-                    msg = LuaPopString(lua);
-                    SetEnvironmentVariableW(L"RADLINE_DIR", nullptr);
-                    return false;
-                }
-            }
-            assert(lua_gettop(lua) == 0);
-        }
-        SetEnvironmentVariableW(L"RADLINE_DIR", nullptr);
-        return true;
+        return
+            //LuaRequire(lua, "RadLine", msg) ||
+            LuaRequire(lua, "UserRadLine", msg);
     }
 
     std::wstring_view substr(const bufstring& s, bufstring::const_iterator b, bufstring::const_iterator e)
@@ -196,7 +199,7 @@ namespace {
         if (_stricmp(s, "CD") == 0)
         {
             char FullNameS[MAX_PATH];
-            if (GetCurrentDirectoryA(ARRAYSIZE(FullNameS), FullNameS) == 0)
+            if (GetCurrentDirectoryA(FullNameS) == 0)
                 luaL_error(lua, "GetCurrentDirectory failed 0x%08x\n", GetLastError());
             lua_pushstring(lua, FullNameS);
         }
@@ -257,6 +260,7 @@ namespace {
     {
         std::unique_ptr<lua_State, LuaCloser> L(luaL_newstate());
         luaL_openlibs(L.get());
+        SetLuaPath(L.get());
 
         lua_pushcfunction(L.get(), l_DebugOut);
         lua_setglobal(L.get(), "DebugOut");
@@ -279,6 +283,7 @@ namespace {
         if (!LoadLuaModules(L.get(), msg))
             return {};
 
+        assert(lua_gettop(L.get()) == 0);
         std::vector<std::wstring> all;
 
         //int fi = 0;

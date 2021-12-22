@@ -7,8 +7,7 @@ extern "C"
 #include "lualib.h"
 }
 
-#include <locale>
-#include <codecvt>
+#include "StringUtils.h"
 
 class LuaCloser
 {
@@ -23,20 +22,6 @@ void check(bool b, const char* msg)
 {
     if (!b)
         throw std::exception(msg);
-}
-
-inline std::wstring From_utf8(std::string_view str)
-{
-    wchar_t res[1024];
-    int len = MultiByteToWideChar(CP_UTF8, 0, str.data(), (int) str.length(), res, ARRAYSIZE(res));
-    return std::wstring(res, len);
-}
-
-inline std::string To_utf8(std::wstring_view wstr)
-{
-    char res[1024];
-    int len = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int) wstr.length(), res, ARRAYSIZE(res), nullptr, nullptr);
-    return std::string(res, len);
 }
 
 inline void LuaPush(lua_State* lua, std::wstring_view w)
@@ -105,4 +90,52 @@ inline std::vector<std::wstring> LuaPopVectorOfStrings(lua_State* lua)
     }
     lua_pop(lua, 1);
     return vs;
+}
+
+inline std::wstring LuaGetModuleFileName(lua_State* lua, std::wstring_view module)
+{
+    assert(lua_gettop(lua) == 0);
+    lua_getglobal(lua, "package");
+    lua_getfield(lua, -1, "path");
+    std::wstring cur_path = LuaPopString(lua);
+    lua_pop(lua, 1);
+    assert(lua_gettop(lua) == 0);
+
+    const std::vector<std::wstring_view> paths = Split(cur_path, L';');
+    for (std::wstring_view p : paths)
+    {
+        std::wstring strFile(p);
+        Replace(strFile, L"?", module);
+        if (FileExists(strFile.c_str()))
+            return strFile;
+    }
+
+    return {};
+}
+
+inline int LuaLoadModule(lua_State* lua)
+{
+    std::wstring module = LuaPopString(lua);
+    assert(lua_gettop(lua) == 0);
+    std::wstring file = LuaGetModuleFileName(lua, module);
+    return luaL_dofile(lua, To_utf8(file).c_str());
+}
+
+inline bool LuaRequire(lua_State* lua, const char* modname, std::wstring& msg)
+{
+    assert(lua_gettop(lua) == 0);
+    luaL_requiref(lua, modname, LuaLoadModule, TRUE);
+    assert(lua_gettop(lua) == 1);
+    if (lua_isnil(lua, -1))
+        lua_pop(lua, 1);
+    else if (lua_isstring(lua, -1))
+        msg = LuaPopString(lua);
+    else
+    {
+        msg = L"Unexpected type from luaL_requiref";
+        lua_pop(lua, 1);
+    }
+    assert(lua_gettop(lua) == 0);
+
+    return msg.empty();
 }

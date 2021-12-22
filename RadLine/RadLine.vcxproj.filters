@@ -19,6 +19,7 @@
     <ClInclude Include="LuaUtils.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="DynEnv.h" />
+    <ClInclude Include="StringUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="RadLine.rc" />
