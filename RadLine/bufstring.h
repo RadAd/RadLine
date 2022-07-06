@@ -7,7 +7,6 @@
 // TODO
 // Make the iterators a class so we can do more checking
 // Replace std::wstring with std::wstring_view
-// Move substr into here
 
 class bufstring
 {
@@ -81,7 +80,7 @@ public:
     }
 
 #if 0
-    void replace(size_t b, size_t l, const std::wstring& s)
+    void replace(size_t b, size_t l, std::wstring_view s)
     {
         assert(b >= 0);
         assert(b <= m_len);
@@ -89,13 +88,13 @@ public:
         assert((b + l) <= m_len);
         int d = (int) (s.length() - l);
         wmemmove(begin() + b + l + d, begin() + b + l, m_len - b - l + 1);
-        wmemmove(begin() + b, s.c_str(), s.length());
+        wmemmove(begin() + b, s.data(), s.length());
         m_len += d;
         assert(m_buf[m_len] == L'\0');
     }
 #endif
 
-    void replace(const wchar_t* b, size_t l, const std::wstring& s)
+    void replace(const wchar_t* b, size_t l, std::wstring_view s)
     {
         assert(b >= begin());
         assert(b <= end());
@@ -104,7 +103,7 @@ public:
         assert((lb + l) <= end());
         int d = (int)(s.length() - l);
         wmemmove(lb + l + d, lb + l, end() - lb - l + 1);
-        wmemmove(lb, s.c_str(), s.length());
+        wmemmove(lb, s.data(), s.length());
         m_len += d;
         assert(m_buf[m_len] == L'\0');
     }
@@ -154,7 +153,7 @@ public:
         return *this;
     }
 
-    bufstring& operator+=(const std::wstring& s)
+    bufstring& operator+=(std::wstring_view s)
     {
         append(s.data(), s.length());
         return *this;
@@ -167,8 +166,53 @@ public:
         return begin()[i];
     }
 
+    std::wstring_view substr(bufstring::const_iterator b, bufstring::const_iterator e) const
+    {
+        assert(e >= b);
+        assert(b >= begin() && b <= end());
+        assert(e >= begin() && e <= end());
+        return std::wstring_view(b, e - b);
+    }
+
 private:
     wchar_t* m_buf;
     const size_t m_size;
     size_t m_len;
+};
+
+struct bufstring_view
+{
+    typedef bufstring::const_iterator const_iterator;
+
+    const_iterator begin;
+    const_iterator end;
+
+    size_t length() const
+    {
+        return end - begin;
+    }
+
+    auto front() const
+    {
+        assert(end > begin);
+        return *begin;
+    }
+
+    auto back() const
+    {
+        assert(end > begin);
+        return *(end - 1);
+    }
+
+    auto substr(const bufstring& s) const
+    {
+        return s.substr(begin, end);
+    }
+
+    auto operator[](size_t i) const
+    {
+        assert(i >= 0);
+        assert(i < length());
+        return *(begin + i);
+    }
 };

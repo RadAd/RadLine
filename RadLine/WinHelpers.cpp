@@ -105,7 +105,7 @@ std::vector<std::wstring> findEnv(const std::wstring& s, bool enclose)
     std::vector<std::wstring> list;
 
     LPWCH env = GetEnvironmentStringsW();
-    const wchar_t* e = env;
+    LPCWCH e = env;
     while (*e != L'\0')
     {
         if (Match(s, e))
