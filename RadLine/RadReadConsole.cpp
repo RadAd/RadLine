@@ -33,10 +33,12 @@ extern "C" {
     )
     {
         DebugOut(TEXT("RadLine RadReadConsoleW 0x%08p 0x%p %d 0x%p 0x%p\n"), hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
+        if (lpNumberOfCharsRead != nullptr)
+            DebugOut(TEXT("RadLine   NumberOfCharsRead %u\n"), *lpNumberOfCharsRead);
         if (pInputControl != nullptr)
-            DebugOut(TEXT("RadLine PCONSOLE_READCONSOLE_CONTROL %d %d 0x%08x 0x%08x\n"), pInputControl->nLength, pInputControl->nInitialChars, pInputControl->dwCtrlWakeupMask, pInputControl->dwControlKeyState);
+            DebugOut(TEXT("RadLine   PCONSOLE_READCONSOLE_CONTROL %d %d 0x%08x 0x%08x\n"), pInputControl->nLength, pInputControl->nInitialChars, pInputControl->dwCtrlWakeupMask, pInputControl->dwControlKeyState);
 
-        int enabled = GetEnvironmentInt(L"RADLINE", 1);
+        const int enabled = GetEnvironmentInt(L"RADLINE", 1);
 
         const HANDLE hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -46,7 +48,7 @@ extern "C" {
         }
         else if (nNumberOfCharsToRead == 1)
         {
-            DebugOut(TEXT("RadLine RadReadConsoleW Orig\n"));
+            DebugOut(TEXT("RadLine   RadReadConsoleW Orig\n"));
 
             static const WCHAR response[] = L"\n\rY";
             static int response_count = 0;
@@ -88,8 +90,9 @@ extern "C" {
             && pInputControl != nullptr && pInputControl->dwCtrlWakeupMask != 0
             && lpNumberOfCharsRead != nullptr)
         {
-            DebugOut(TEXT("RadLine RadReadConsoleW 2\n"));
+            DebugOut(TEXT("RadLine   RadReadConsoleW 1\n"));
 
+            // Assume first character is the completion character
             unsigned long t = 0;
             _BitScanForward(&t, pInputControl->dwCtrlWakeupMask);
             const WCHAR c = (WCHAR) t;
@@ -98,18 +101,20 @@ extern "C" {
             BOOL repeat = TRUE;
             Extra extra = {};
 
-            pInputControl->dwCtrlWakeupMask |= 1 << ('e' - 'a' + 1); // Ctrl+e
+            CONSOLE_READCONSOLE_CONTROL LocalInputControl = *pInputControl;
+            const struct {} pInputControl = {}; // Hide variable
+            LocalInputControl.dwCtrlWakeupMask |= 1 << ('e' - 'a' + 1); // Ctrl+e
 
             while (repeat)
             {
                 const COORD origpos = GetConsoleCursorPosition(hStdOutput);
-                r = pOrigReadConsoleW(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
+                r = pOrigReadConsoleW(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, &LocalInputControl);
                 CleanUpExtra(hStdOutput, &extra);
 
                 if (r)
                 {
                     const CONSOLE_SCREEN_BUFFER_INFO csbi = GetConsoleScreenBufferInfo(hStdOutput);
-                    const COORD startpos = Add(origpos, - (SHORT) pInputControl->nInitialChars, csbi.dwSize.X);
+                    const COORD startpos = Add(origpos, - (SHORT) LocalInputControl.nInitialChars, csbi.dwSize.X);
                     size_t CursorOffset = Diff(csbi.dwCursorPosition, startpos, csbi.dwSize.X);
 
                     if (CursorOffset < *lpNumberOfCharsRead)
@@ -127,7 +132,7 @@ extern "C" {
                         {
                             bufstring line(pStr, nNumberOfCharsToRead, *lpNumberOfCharsRead);
                             Complete(hStdOutput, line, &CursorOffset, &extra, csbi.dwSize);
-                            pInputControl->nInitialChars = (ULONG) line.length();
+                            LocalInputControl.nInitialChars = (ULONG) line.length();
                         }
                         else if (cChar == ('e' - 'a' + 1))
                         {
@@ -136,7 +141,7 @@ extern "C" {
                             SetEnvironmentVariableW(L"CD", CurrentDirectory);
 
                             pStr[*lpNumberOfCharsRead] = L'\0';
-                            pInputControl->nInitialChars = ExpandEnvironmentStrings(pStr, nNumberOfCharsToRead) - 1;
+                            LocalInputControl.nInitialChars = ExpandEnvironmentStrings(pStr, nNumberOfCharsToRead) - 1;
 
                             SetEnvironmentVariableW(L"CD", nullptr);
 
@@ -146,19 +151,19 @@ extern "C" {
                                 SetConsoleCursorPosition(hStdOutput, pos);
                             }
 
-                            WriteConsole(hStdOutput, pStr, pInputControl->nInitialChars, nullptr, 0);
-                            CursorOffset = pInputControl->nInitialChars;
+                            WriteConsole(hStdOutput, pStr, LocalInputControl.nInitialChars, nullptr, 0);
+                            CursorOffset = LocalInputControl.nInitialChars;
                         }
                         else
                         {
-                            pInputControl->nInitialChars = *lpNumberOfCharsRead;
+                            LocalInputControl.nInitialChars = *lpNumberOfCharsRead;
                         }
 
                         // Leave cursor at end of line, pOrigReadConsoleW has no way of starting with the cursor in the middle
-                        if (pInputControl->nInitialChars != CursorOffset)
+                        if (LocalInputControl.nInitialChars != CursorOffset)
                         {
                             COORD pos = GetConsoleCursorPosition(hStdOutput);
-                            pos = Add(pos, (SHORT) (pInputControl->nInitialChars - CursorOffset), csbi.dwSize.X);
+                            pos = Add(pos, (SHORT) (LocalInputControl.nInitialChars - CursorOffset), csbi.dwSize.X);
                             SetConsoleCursorPosition(hStdOutput, pos);
                         }
                         assert(GetConsoleCursorPosition(hStdOutput) == Add(startpos, (SHORT) CursorOffset, csbi.dwSize.X));
@@ -199,9 +204,19 @@ extern "C" {
                 GetEnvironmentVariableW(L"RADLINE_PRE", pre);
                 wchar_t post[100] = L"";
                 GetEnvironmentVariableW(L"RADLINE_POST", post);
-                if (pre[0] != TEXT('\0') || post[0] != TEXT('\0'))
+                if ((pre[0] != TEXT('\0') || post[0] != TEXT('\0')) && *reinterpret_cast<TCHAR*>(lpBuffer) != L' ')
                 {
                     bufstring cmd(reinterpret_cast<TCHAR*>(lpBuffer), nNumberOfCharsToRead, *lpNumberOfCharsRead);
+
+                    for (const wchar_t* w = cmd.begin(); w != cmd.end(); ++w)
+                    {
+                        if (*w == L')' && w[-1] != L'^')
+                        {
+                            cmd.insert(w, L'^');
+                            w++;
+                        }
+                    }
+
                     if (pre[0] != TEXT('\0'))
                     {
                         const wchar_t* w = cmd.begin();
@@ -227,7 +242,7 @@ extern "C" {
         else if (enabled == 2
             && (pInputControl == nullptr || pInputControl->nInitialChars == 0))
         {
-            DebugOut(TEXT("RadLine RadReadConsoleW 1\n"));
+            DebugOut(TEXT("RadLine   RadReadConsoleW 2\n"));
             DWORD modeout = 0;
             GetConsoleMode(hStdOutput, &modeout);
             SetConsoleMode(hStdOutput, modeout & ~ENABLE_PROCESSED_OUTPUT); // Needed so that cursor moves on to next line
@@ -243,7 +258,7 @@ extern "C" {
         }
         else
         {
-            DebugOut(TEXT("RadLine RadReadConsoleW Orig\n"));
+            DebugOut(TEXT("RadLine   RadReadConsoleW Orig\n"));
             return pOrigReadConsoleW(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
         }
     }

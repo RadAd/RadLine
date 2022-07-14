@@ -136,7 +136,7 @@ redirect_sep = {
 
 function GetParam(params, p)
     local s = params[p] or ""
-    local i = s:match'^.*()\\' -- Find last of '\'
+    local i = s:match'^.*()[\\/]' -- Find last of '\' or '/'
     i = i and i + 1 or 1
     if #s > 0 and s:sub(1, 1) == '"' then
         s = s:sub(2)
