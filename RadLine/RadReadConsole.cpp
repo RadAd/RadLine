@@ -119,6 +119,7 @@ extern "C" {
 
                     if (CursorOffset < *lpNumberOfCharsRead)
                     {
+                        BOOL fixcursor = TRUE;
                         WCHAR* const pStr = reinterpret_cast<TCHAR*>(lpBuffer);
                         WCHAR* const pChar = pStr + CursorOffset;
                         const WCHAR cChar = *pChar;
@@ -157,16 +158,21 @@ extern "C" {
                         else
                         {
                             LocalInputControl.nInitialChars = *lpNumberOfCharsRead;
+                            *pChar = cChar;
+                            repeat = FALSE;
+                            fixcursor = FALSE;
                         }
 
-                        // Leave cursor at end of line, pOrigReadConsoleW has no way of starting with the cursor in the middle
-                        if (LocalInputControl.nInitialChars != CursorOffset)
-                        {
-                            COORD pos = GetConsoleCursorPosition(hStdOutput);
-                            pos = Add(pos, (SHORT) (LocalInputControl.nInitialChars - CursorOffset), csbi.dwSize.X);
-                            SetConsoleCursorPosition(hStdOutput, pos);
+                        if (fixcursor)
+                        {   // Leave cursor at end of line, pOrigReadConsoleW has no way of starting with the cursor in the middle
+                            if (LocalInputControl.nInitialChars != CursorOffset)
+                            {
+                                COORD pos = GetConsoleCursorPosition(hStdOutput);
+                                pos = Add(pos, (SHORT) (LocalInputControl.nInitialChars - CursorOffset), csbi.dwSize.X);
+                                SetConsoleCursorPosition(hStdOutput, pos);
+                            }
+                            assert(GetConsoleCursorPosition(hStdOutput) == Add(startpos, (SHORT) CursorOffset, csbi.dwSize.X));
                         }
-                        assert(GetConsoleCursorPosition(hStdOutput) == Add(startpos, (SHORT) CursorOffset, csbi.dwSize.X));
                     }
                     else
                         repeat = false;
