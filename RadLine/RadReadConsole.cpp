@@ -157,6 +157,7 @@ extern "C" {
                         }
                         else
                         {
+                            ++*lpNumberOfCharsRead;
                             LocalInputControl.nInitialChars = *lpNumberOfCharsRead;
                             *pChar = cChar;
                             repeat = FALSE;
@@ -171,7 +172,7 @@ extern "C" {
                                 pos = Add(pos, (SHORT) (LocalInputControl.nInitialChars - CursorOffset), csbi.dwSize.X);
                                 SetConsoleCursorPosition(hStdOutput, pos);
                             }
-                            assert(GetConsoleCursorPosition(hStdOutput) == Add(startpos, (SHORT) CursorOffset, csbi.dwSize.X));
+                            assert(GetConsoleCursorPosition(hStdOutput) == Add(startpos, (SHORT) LocalInputControl.nInitialChars, csbi.dwSize.X));
                         }
                     }
                     else
