@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Directories">
+    <BuildDir>$(SolutionDir)Bin\$(Platform)$(Configuration)\</BuildDir>
+    <PackageDir>$(SolutionDir)Package\$(Platform)$(Configuration)\</PackageDir>
+  </PropertyGroup>
+  <Target Name="Package">
+    <Copy
+      SourceFiles="$(BuildDir)RadLine.dll"
+      DestinationFolder="$(PackageDir)" />
+    <Copy
+      SourceFiles="$(BuildDir)RLoadDll.exe"
+      DestinationFolder="$(PackageDir)" />
+    <Copy
+      SourceFiles="$(SolutionDir)Lua\Bin$(Platform)\Lua.dll"
+      DestinationFolder="$(PackageDir)" />
+    <ZipDirectory
+      Overwrite="true"
+      SourceDirectory="$(PackageDir)"
+      DestinationFile="$(SolutionDir)RadLine$(Platform).zip" />
+  </Target>
+</Project>
