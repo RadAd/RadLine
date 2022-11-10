@@ -183,7 +183,18 @@ extern "C" {
                     wmemset(e, L'-', count);
                     ret += count - 2;
                 }
-                //ret = ExpandEnvironmentStrings(lpBuffer, nSize);
+                for (int i = 0; lpBuffer[i] != L'\0'; ++i)
+                    if (lpBuffer[i] == L'!')
+                        lpBuffer[i] = L'%';
+                ret = ExpandEnvironmentStrings(lpBuffer, nSize); // Note doesn't use GetEnvironmentVariable
+            }
+            else if (ret == 0)
+            {
+                if (const wchar_t* p = wcschr(lpName, L'?'))
+                {
+                    ret = static_cast<DWORD>(wcslen(p + 1));
+                    wmemcpy_s(lpBuffer, nSize, p + 1, ret + 1);
+                }
             }
         }
         return ret;
