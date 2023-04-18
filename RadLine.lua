@@ -2,7 +2,10 @@
 -- Should FindFiles expand environment variables are should I do that explicitly before
 -- Need a find reg values also
 
--- function DebugOut(s)
+local win32 = require "lrwin32"
+--win32.OutputDebugString("package.path: " .. package.path .. "\n")
+--win32.OutputDebugString("package.cpath: " .. package.cpath .. "\n")
+
 -- function GetEnv(s) -- because os.getenv doesn't reflect updates values
 FindFilesE = { All = 0, DirOnly = 1, FileOnly = 2 }
 -- function FindFiles(s, FindFilesE)
@@ -10,7 +13,7 @@ FindFilesE = { All = 0, DirOnly = 1, FileOnly = 2 }
 -- function FindRegKey(s)
 
 function DebugOutLn(s)
-    DebugOut(s .. "\n")
+    win32.OutputDebugString(s .. "\n")
 end
 
 internal = {
@@ -78,7 +81,7 @@ function beginswith(s, t)
     return s:find("^"..escape(t)) ~= nil
 end
 
-DebugOut("RadLine ".._VERSION.."\n")
+DebugOutLn("RadLine ".._VERSION)
 
 function FindExeFiles(s)
     local pathext = split(GetEnv("PATHEXT"), ";")

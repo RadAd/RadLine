@@ -21,34 +21,44 @@ extern HMODULE g_hModule;
 namespace {
     void SetLuaPath(lua_State* lua)
     {
-        WCHAR strRadlineDir[MAX_PATH];
-        GetEnvironmentVariableW(L"RADLINE_DIR", strRadlineDir);
-
         lua_getglobal(lua, "package");
-        std::wstring cur_path;
+        {
+            std::string cur_path;
 #if 0
-        lua_getfield(lua, -1, "path");
-        cur_path = LuaPopString(lua);
+            lua_getfield(lua, -1, "path");
+            cur_path = LuaPopString(lua);
 #endif
 
-        const WCHAR* paths[] = {
-            LR"(%LOCALAPPDATA%\RadSoft\RadLine)",
-            LR"(%ProgramData%\RadSoft\RadLine)",
-            strRadlineDir,
-        };
-        for (const WCHAR* p : paths)
-        {
-            WCHAR strPath[MAX_PATH];
-            ExpandEnvironmentStringsW(p, strPath);
-            if (!cur_path.empty())
-                cur_path += L';';
-            cur_path += strPath;
-            cur_path += LR"(\?;)";
-            cur_path += strPath;
-            cur_path += LR"(\?.lua)";
+            const char* paths[] = {
+                R"(%LOCALAPPDATA%\RadSoft\RadLine)",
+                R"(%ProgramData%\RadSoft\RadLine)",
+                R"(%RADLINE_DIR%)",
+            };
+            for (const char* p : paths)
+            {
+                char strPath[MAX_PATH];
+                ExpandEnvironmentStringsA(p, strPath);
+                if (!cur_path.empty())
+                    cur_path += L';';
+                cur_path += strPath;
+                cur_path += R"(\?;)";
+                cur_path += strPath;
+                cur_path += R"(\?.lua)";
+            }
+            lua_pushstring(lua, cur_path.c_str());
+            lua_setfield(lua, -2, "path");
         }
-        lua_pushstring(lua, To_utf8(cur_path).c_str());
-        lua_setfield(lua, -2, "path");
+
+        {
+            HMODULE hLua = GetModuleHandle(L"lua.dll");
+            char strPath[MAX_PATH];
+            DWORD len = GetModuleFileNameA(hLua, strPath, ARRAYSIZE(strPath));
+            char* strFilename = PathFindFileNameA(strPath);
+            strcpy_s(strFilename, ARRAYSIZE(strPath) - len, "?.dll");
+            lua_pushstring(lua, strPath);
+            lua_setfield(lua, -2, "cpath");
+        }
+
         lua_pop(lua, 1);
     }
 
@@ -143,12 +153,6 @@ namespace {
         }
     }
 
-    int l_DebugOut(lua_State* lua)
-    {
-        OutputDebugStringA(luaL_checklstring(lua, -1, nullptr));
-        return 0;  /* number of results */
-    }
-
     int l_GetEnv(lua_State* lua)
     {
         const char* s = luaL_checklstring(lua, -1, nullptr);
@@ -218,7 +222,6 @@ namespace {
         luaL_openlibs(L.get());
         SetLuaPath(L.get());
 
-        lua_register(L.get(), "DebugOut", l_DebugOut);
         lua_register(L.get(), "GetEnv", l_GetEnv);
         lua_register(L.get(), "FindFiles", l_FindFiles);
         lua_register(L.get(), "FindEnv", l_FindEnv);

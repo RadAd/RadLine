@@ -62,7 +62,7 @@ inline int GetEnvironmentInt(LPCWSTR name, int def = 0)
 template <size_t size>
 inline DWORD ExpandEnvironmentStringsA(LPCSTR lpSrc, CHAR(&rBuffer)[size])
 {
-    return ExpandEnvironmentStringsW(lpSrc, rBuffer, size);
+    return ExpandEnvironmentStringsA(lpSrc, rBuffer, size);
 }
 
 template <size_t size>
