@@ -6,31 +6,6 @@
 #include <sstream>
 
 namespace {
-    bool CharCaseInsensitiveLess(wchar_t a, wchar_t b)
-    {
-        return std::toupper(a) < std::toupper(b);
-    }
-
-    bool CaseInsensitiveLess(const std::wstring& s1, const std::wstring& s2)
-    {
-        return std::lexicographical_compare(s1.begin(), s1.end(), s2.begin(), s2.end(), CharCaseInsensitiveLess);
-    }
-
-    bool FileNameIsDir(const std::wstring& s)
-    {
-        return !s.empty() && s.back() == L'\\';
-    }
-
-    bool FileNameLess(const std::wstring& s1, const std::wstring& s2)
-    {
-        if (FileNameIsDir(s1) && !FileNameIsDir(s2))
-            return true;
-        else if (!FileNameIsDir(s1) && FileNameIsDir(s2))
-            return false;
-        else
-            return CaseInsensitiveLess(s1, s2);
-    }
-
     inline bool Match(const std::wstring& s, const wchar_t* p, size_t len)
     {
         return (s.length() <= len && _wcsnicmp(s.c_str(), p, s.length()) == 0);
@@ -41,64 +16,6 @@ namespace {
         return Match(s, p, wcslen(p));
     }
 };
-
-std::vector<std::wstring> findFiles(const std::wstring& s, FindFilesE filter)
-{
-    std::vector<std::wstring> list;
-
-    std::wstring FullName(s);
-    FullName.erase(std::remove(FullName.begin(), FullName.end(), L'\"'), FullName.end());
-
-    if (FullName.compare(0, 2, L"~\\") == 0 && GetEnvironmentInt(L"RADLINE_TILDE", 1))
-        FullName.replace(0, 1, L"%USERPROFILE%");
-
-#if 1
-    {
-        wchar_t FullNameS[MAX_PATH];
-        GetCurrentDirectoryW(FullNameS);
-        SetEnvironmentVariableW(L"CD", FullNameS);
-        ExpandEnvironmentStringsW(FullName.c_str(), FullNameS);
-        SetEnvironmentVariableW(L"CD", nullptr);
-        FullName = FullNameS;
-    }
-#endif
-
-    //FullName += L'*';
-
-    WIN32_FIND_DATAW FindFileData;
-    HANDLE hFind = FindFirstFileW(FullName.c_str(), &FindFileData);
-    if (hFind != INVALID_HANDLE_VALUE)
-    {
-        do
-        {
-            if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) == 0
-                && wcscmp(FindFileData.cFileName, L".") != 0
-                && wcscmp(FindFileData.cFileName, L"..") != 0)
-            {
-                if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
-                    wcscat_s(FindFileData.cFileName, L"\\");
-                bool add = true;
-                switch (filter)
-                {
-                case FindFilesE::DirOnly:
-                    add = (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-                    break;
-
-                case FindFilesE::FileOnly:
-                    add = (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
-                    break;
-                }
-                if (add)
-                    list.push_back(FindFileData.cFileName);
-            }
-        } while (FindNextFileW(hFind, &FindFileData) != 0);
-        FindClose(hFind);
-    }
-
-    std::sort(list.begin(), list.end(), FileNameLess);
-
-    return list;
-}
 
 std::vector<std::wstring> findEnv(const std::wstring& s, bool enclose)
 {

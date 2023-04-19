@@ -1,14 +1,13 @@
 -- TODO
--- Should FindFiles expand environment variables are should I do that explicitly before
 -- Need a find reg values also
 
 local win32 = require "lrwin32"
 --win32.OutputDebugString("package.path: " .. package.path .. "\n")
 --win32.OutputDebugString("package.cpath: " .. package.cpath .. "\n")
+INVALID_HANDLE_VALUE = -1   --  TODO add to win32 somewhere
+
 
 -- function GetEnv(s) -- because os.getenv doesn't reflect updates values
-FindFilesE = { All = 0, DirOnly = 1, FileOnly = 2 }
--- function FindFiles(s, FindFilesE)
 -- function FindEnv(s, enclose)
 -- function FindRegKey(s)
 
@@ -78,10 +77,78 @@ do
 end
 
 function beginswith(s, t)
+    -- TODO better? s:sub(1, #t) == t
     return s:find("^"..escape(t)) ~= nil
 end
 
+function table.contains(table, element)
+  for _, value in pairs(table) do
+    if value == element then
+      return true
+    end
+  end
+  return false
+end
+
 DebugOutLn("RadLine ".._VERSION)
+
+function CaseInsensitiveLess(s1, s2)
+    return s1:lower() < s2:lower()
+end
+
+function FileNameIsDir(s)
+    return s:sub(-1) == "\\";
+end
+
+function FileNameLess(s1, s2)
+    if FileNameIsDir(s1) and not FileNameIsDir(s2) then
+        return true;
+    elseif not FileNameIsDir(s1) and FileNameIsDir(s2) then
+        return false;
+    else
+        return CaseInsensitiveLess(s1, s2)
+    end
+end
+
+FindFilesE = { All = 0, DirOnly = 1, FileOnly = 2 }
+function FindFiles(s, e)
+    assert(table.contains(FindFilesE, e), "e=" .. tostring(e) .. " is not in FindFilesE")
+    s = s:gsub('"', '')
+
+    if beginswith(s, "~\\") and tonumber(win32.GetEnvironmentVariable("RADLINE_TILDE") or 0) ~= 0 then
+        s = "%USERPROFILE%" .. s:sub(2, -1)
+    end
+
+    win32.SetEnvironmentVariable("CD", win32.GetCurrentDirectory())
+    s = win32.ExpandEnvironmentStrings(s)
+    win32.SetEnvironmentVariable("CD", nil)
+
+    local files = {}
+    local FindFileData = {}
+    local hFind = win32.FindFirstFile(s, FindFileData)
+    if hFind ~= INVALID_HANDLE_VALUE then
+        repeat
+            if FindFileData.cFileName ~= "." and FindFileData.cFileName ~= ".." then
+            --if FindFileData.cFileName ~= "." and FindFileData.cFileName ~= ".." and (FindFileData.dwFileAttributes & win32.FILE_ATTRIBUTE.HIDDEN) == 0 then
+                local add = true;
+                if     e == FindFilesE.FileOnly and (FindFileData.dwFileAttributes & win32.FILE_ATTRIBUTE.DIRECTORY) ~= 0 then add = false;
+                elseif e == FindFilesE.DirOnly  and (FindFileData.dwFileAttributes & win32.FILE_ATTRIBUTE.DIRECTORY) == 0 then add = false;
+                end
+                if add then
+                    if (FindFileData.dwFileAttributes & win32.FILE_ATTRIBUTE.DIRECTORY) ~= 0 then
+                        FindFileData.cFileName = FindFileData.cFileName.."\\"
+                    end
+                    files[#files+1] = FindFileData.cFileName
+                end
+            end
+        until not win32.FindNextFile(hFind, FindFileData)
+        win32.FindClose(hFind);
+    end
+
+    table.sort(files, FileNameLess)
+
+    return files;
+end
 
 function FindExeFiles(s)
     local pathext = split(GetEnv("PATHEXT"), ";")

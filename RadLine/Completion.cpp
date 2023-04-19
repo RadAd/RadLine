@@ -23,6 +23,11 @@ namespace {
     {
         lua_getglobal(lua, "package");
         {
+            char strRadLinePath[MAX_PATH];
+            DWORD len = GetModuleFileNameA(g_hModule, strRadLinePath, ARRAYSIZE(strRadLinePath));
+            char* strFilename = PathFindFileNameA(strRadLinePath);
+            strFilename[-1] = '\0';
+
             std::string cur_path;
 #if 0
             lua_getfield(lua, -1, "path");
@@ -32,7 +37,7 @@ namespace {
             const char* paths[] = {
                 R"(%LOCALAPPDATA%\RadSoft\RadLine)",
                 R"(%ProgramData%\RadSoft\RadLine)",
-                R"(%RADLINE_DIR%)",
+                strRadLinePath,
             };
             for (const char* p : paths)
             {
@@ -181,15 +186,6 @@ namespace {
         return 1;  /* number of results */
     }
 
-    int l_FindFiles(lua_State* lua)
-    {
-        FindFilesE filter = static_cast<FindFilesE>(luaL_checkinteger(lua, -1));
-        std::wstring s = From_utf8(luaL_checklstring(lua, -2, nullptr));
-        std::vector<std::wstring> f = findFiles(s, filter);
-        LuaPush(lua, f);
-        return 1;  /* number of results */
-    }
-
     int l_FindEnv(lua_State* lua)
     {
         luaL_checktype(lua, -1, LUA_TBOOLEAN);
@@ -223,7 +219,6 @@ namespace {
         SetLuaPath(L.get());
 
         lua_register(L.get(), "GetEnv", l_GetEnv);
-        lua_register(L.get(), "FindFiles", l_FindFiles);
         lua_register(L.get(), "FindEnv", l_FindEnv);
         lua_register(L.get(), "FindAlias", l_FindAlias);
         lua_register(L.get(), "FindRegKey", l_FindRegKey);
