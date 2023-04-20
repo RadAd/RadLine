@@ -17,27 +17,6 @@ namespace {
     }
 };
 
-std::vector<std::wstring> findEnv(const std::wstring& s, bool enclose)
-{
-    std::vector<std::wstring> list;
-
-    LPWCH env = GetEnvironmentStringsW();
-    LPCWCH e = env;
-    while (*e != L'\0')
-    {
-        if (Match(s, e))
-        {
-            const wchar_t* eq = wcschr(e, L'=');
-            std::wstring n(e, eq - e);
-            list.push_back(enclose ? L'%' + n + L'%' : n);
-        }
-        e += wcslen(e) + 1;
-    }
-    FreeEnvironmentStrings(env);
-
-    return list;
-}
-
 std::vector<std::wstring> findAlias(const std::wstring& s)
 {
     std::vector<std::wstring> list;
