@@ -14,12 +14,6 @@ function DebugOutLn(s)
     win32.OutputDebugString(s .. "\n")
 end
 
-internal = {
-    "assoc", "call", "cd", "chdir", "cls", "color", "copy", "date", "del", "dir", "echo", "endlocal", "erase", "exit", "for",
-    "ftype", "goto", "if", "md", "mkdir", "mklink", "move", "path", "popd", "prompt", "pushd", "rem", "ren", "rd", "rmdir",
-    "set", "setlocal", "shift", "start", "time", "title", "type", "ver", "verify", "vol"
-}
-
 function split(s, sep)
     local fields = {}
 
@@ -89,11 +83,17 @@ function table.contains(table, element)
   return false
 end
 
-DebugOutLn("RadLine ".._VERSION)
-
 function CaseInsensitiveLess(s1, s2)
     return s1:lower() < s2:lower()
 end
+
+DebugOutLn("RadLine ".._VERSION)
+
+internal = {
+    "assoc", "call", "cd", "chdir", "cls", "color", "copy", "date", "del", "dir", "echo", "endlocal", "erase", "exit", "for",
+    "ftype", "goto", "if", "md", "mkdir", "mklink", "move", "path", "popd", "prompt", "pushd", "rem", "ren", "rd", "rmdir",
+    "set", "setlocal", "shift", "start", "time", "title", "type", "ver", "verify", "vol"
+}
 
 function FileNameIsDir(s)
     return s:sub(-1) == "\\";
@@ -175,6 +175,24 @@ function FindPathExeFiles(s)
         concat(f, FindExeFiles(i.."\\"..s))
     end
     return f
+end
+
+function FindEnv(s, enclose)
+    s = s:upper()
+    local e = {}
+
+    local env = win32.GetEnvironmentStrings();
+    for k,v in pairs(env) do
+        if beginswith(k:upper(), s) then
+            if enclose then
+                e[#e+1] = "%"..k.."%"
+            else
+                e[#e+1] = k
+            end
+        end
+    end
+
+    return e;
 end
 
 function FindEnvBegin(s)

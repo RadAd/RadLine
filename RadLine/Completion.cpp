@@ -158,16 +158,6 @@ namespace {
         }
     }
 
-    int l_FindEnv(lua_State* lua)
-    {
-        luaL_checktype(lua, -1, LUA_TBOOLEAN);
-        bool enclose = lua_toboolean(lua, -1);
-        std::wstring s = From_utf8(luaL_checklstring(lua, -2, nullptr));
-        std::vector<std::wstring> f = findEnv(s, enclose);
-        LuaPush(lua, f);
-        return 1;  /* number of results */
-    }
-
     int l_FindAlias(lua_State* lua)
     {
         std::wstring s = From_utf8(luaL_checklstring(lua, -1, nullptr));
@@ -190,7 +180,6 @@ namespace {
         luaL_openlibs(L.get());
         SetLuaPath(L.get());
 
-        lua_register(L.get(), "FindEnv", l_FindEnv);
         lua_register(L.get(), "FindAlias", l_FindAlias);
         lua_register(L.get(), "FindRegKey", l_FindRegKey);
 
