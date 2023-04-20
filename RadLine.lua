@@ -7,7 +7,6 @@ local win32 = require "lrwin32"
 INVALID_HANDLE_VALUE = -1   --  TODO add to win32 somewhere
 
 
--- function GetEnv(s) -- because os.getenv doesn't reflect updates values
 -- function FindEnv(s, enclose)
 -- function FindRegKey(s)
 
@@ -151,7 +150,7 @@ function FindFiles(s, e)
 end
 
 function FindExeFiles(s)
-    local pathext = split(GetEnv("PATHEXT"), ";")
+    local pathext = split(win32.GetEnvironmentVariable("PATHEXT"), ";")
     local dot = s:match'^.*()%.' -- Find last of '.'
     local slash = s:match'^.*()\\' or 0 -- Find last of '\'
     local ext = (dot and dot > slash) and s:sub(dot):upper() or nil
@@ -170,7 +169,7 @@ function FindExeFiles(s)
 end
 
 function FindPathExeFiles(s)
-    local path = split(GetEnv("PATH"), ";")
+    local path = split(win32.GetEnvironmentVariable("PATH"), ";")
     local f = {}
     for _,i in ipairs(path) do
         concat(f, FindExeFiles(i.."\\"..s))
@@ -240,7 +239,7 @@ command_fn = {
 }
 
 function LookUpExt(t, key)
-    local pathext = split(GetEnv("PATHEXT"), ";")
+    local pathext = split(win32.GetEnvironmentVariable("PATHEXT"), ";")
     for _,i in ipairs(pathext) do
         local f = rawget(t, (key..i):lower())
         if f then

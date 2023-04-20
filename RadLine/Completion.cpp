@@ -158,34 +158,6 @@ namespace {
         }
     }
 
-    int l_GetEnv(lua_State* lua)
-    {
-        const char* s = luaL_checklstring(lua, -1, nullptr);
-        if (_stricmp(s, "CD") == 0)
-        {
-            char FullNameS[MAX_PATH];
-            if (GetCurrentDirectoryA(FullNameS) == 0)
-                luaL_error(lua, "GetCurrentDirectory failed 0x%08x\n", GetLastError());
-            lua_pushstring(lua, FullNameS);
-        }
-        else
-        {
-            static std::vector<char> v(1024, 0);
-            DWORD ret = GetEnvironmentVariableA(s, v);
-            if (ret == 0)
-                luaL_error(lua, "GetEnvironmentVariable failed 0x%08x\n", GetLastError());
-            else if (ret != ERROR_ENVVAR_NOT_FOUND)
-            {
-                v.resize((size_t) ret);
-                ret = GetEnvironmentVariableA(s, v);
-                if (ret == 0)
-                    luaL_error(lua, "GetEnvironmentVariable failed 0x%08x\n", GetLastError());
-            }
-            lua_pushstring(lua, v.data());
-        }
-        return 1;  /* number of results */
-    }
-
     int l_FindEnv(lua_State* lua)
     {
         luaL_checktype(lua, -1, LUA_TBOOLEAN);
@@ -218,7 +190,6 @@ namespace {
         luaL_openlibs(L.get());
         SetLuaPath(L.get());
 
-        lua_register(L.get(), "GetEnv", l_GetEnv);
         lua_register(L.get(), "FindEnv", l_FindEnv);
         lua_register(L.get(), "FindAlias", l_FindAlias);
         lua_register(L.get(), "FindRegKey", l_FindRegKey);
