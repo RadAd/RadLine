@@ -211,7 +211,7 @@ extern "C" {
                 GetEnvironmentVariableW(L"RADLINE_PRE", pre);
                 wchar_t post[100] = L"";
                 GetEnvironmentVariableW(L"RADLINE_POST", post);
-                if ((pre[0] != TEXT('\0') || post[0] != TEXT('\0')) && *reinterpret_cast<TCHAR*>(lpBuffer) != L' ')
+                if ((pre[0] != TEXT('\0') || post[0] != TEXT('\0')) && *reinterpret_cast<TCHAR*>(lpBuffer) != L' ' && *reinterpret_cast<TCHAR*>(lpBuffer) != L'(')
                 {
                     bufstring cmd(reinterpret_cast<TCHAR*>(lpBuffer), nNumberOfCharsToRead, *lpNumberOfCharsRead);
 
