@@ -173,6 +173,24 @@ extern "C" {
                                 SetConsoleCursorPosition(hStdOutput, pos);
                             }
                             assert(GetConsoleCursorPosition(hStdOutput) == Add(startpos, (SHORT) LocalInputControl.nInitialChars, csbi.dwSize.X));
+
+                            if (LocalInputControl.nInitialChars != CursorOffset)
+                            {
+                                // Insert left key into input queue to return cursor to correct position
+                                const HANDLE hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+
+                                INPUT_RECORD ir[2] = {};
+                                ir[0].EventType = { KEY_EVENT };
+                                ir[0].Event.KeyEvent.bKeyDown = TRUE;
+                                ir[0].Event.KeyEvent.wVirtualKeyCode = VK_LEFT;
+                                ir[1].EventType = { KEY_EVENT };
+                                ir[1].Event.KeyEvent.bKeyDown = FALSE;
+                                ir[1].Event.KeyEvent.wVirtualKeyCode = VK_LEFT;
+
+                                DWORD written = 0;
+                                for (size_t i = CursorOffset; i < LocalInputControl.nInitialChars; ++i)
+                                    WriteConsoleInput(hStdInput, ir, 2, &written);
+                            }
                         }
                     }
                     else
