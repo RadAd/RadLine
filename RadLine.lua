@@ -156,13 +156,21 @@ function FindExeFiles(s)
     local ext = (dot and dot > slash) and s:sub(dot):upper() or nil
 
     local f = {}
-    for _,i in ipairs(pathext) do
-        local dot = i:match'^.*()%.' -- Find last of '.'
-        local iext = dot and i:sub(dot) or i
-        if ext and beginswith(iext:upper(), ext) then
-            concat(f, FindFiles(s.."*", FindFilesE.FileOnly))
-        else
+    if not ext then
+        for _,i in ipairs(pathext) do
             concat(f, FindFiles(s.."*"..i, FindFilesE.FileOnly))
+        end
+    else
+        for _,i in ipairs(pathext) do
+            local dot = i:match'^.*()%.' -- Find last of '.'
+            local iext = (dot and dot > 1) and i:sub(dot) or nil
+            if beginswith(i:upper(), ext) then
+                concat(f, FindFiles(s..i:sub(#ext + 1), FindFilesE.FileOnly))
+            end
+            if iext and beginswith(iext:upper(), ext) then
+                concat(f, FindFiles(s..i:sub(dot + #ext), FindFilesE.FileOnly))
+            end
+            --concat(f, FindFiles(s.."*"..i, FindFilesE.FileOnly))
         end
     end
     return f
