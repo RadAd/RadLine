@@ -2,7 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="RadLine.cpp" />
     <ClCompile Include="WinHelpers.cpp" />
     <ClCompile Include="Completion.cpp" />
     <ClCompile Include="RadReadConsole.cpp" />
@@ -14,7 +13,6 @@
     <ClInclude Include="bufstring.h" />
     <ClInclude Include="Completion.h" />
     <ClInclude Include="Debug.h" />
-    <ClInclude Include="RadLine.h" />
     <ClInclude Include="RadReadConsole.h" />
     <ClInclude Include="LuaUtils.h" />
     <ClInclude Include="resource.h" />

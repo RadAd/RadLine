@@ -2,10 +2,11 @@
 #include "RadReadConsole.h"
 
 #include "Completion.h"
-#include "RadLine.h"
 #include "WinHelpers.h"
 #include "Debug.h"
 #include "bufstring.h"
+
+#include "..\RadReadConsole\RadReadConsole.h"
 
 #include <wchar.h>
 
@@ -24,7 +25,7 @@ extern "C" {
 
     // Designed to replace ReadConsoleW
     __declspec(dllexport)
-    BOOL WINAPI RadReadConsoleW(
+    BOOL WINAPI RadLineReadConsoleW(
         _In_     HANDLE  hConsoleInput,
         _Out_    LPVOID  lpBuffer,
         _In_     DWORD   nNumberOfCharsToRead,
@@ -32,7 +33,7 @@ extern "C" {
         _In_opt_ PCONSOLE_READCONSOLE_CONTROL pInputControl
     )
     {
-        DebugOut(TEXT("RadLine RadReadConsoleW 0x%08p 0x%p %d 0x%p 0x%p\n"), hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
+        DebugOut(TEXT("RadLine RadLineReadConsoleW 0x%08p 0x%p %d 0x%p 0x%p\n"), hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
         if (lpNumberOfCharsRead != nullptr)
             DebugOut(TEXT("RadLine   NumberOfCharsRead %u\n"), *lpNumberOfCharsRead);
         if (pInputControl != nullptr)
@@ -48,7 +49,7 @@ extern "C" {
         }
         else if (nNumberOfCharsToRead == 1)
         {
-            DebugOut(TEXT("RadLine   RadReadConsoleW Orig\n"));
+            DebugOut(TEXT("RadLine   RadLineReadConsoleW Orig\n"));
 
             static const WCHAR response[] = L"\n\rY";
             static int response_count = 0;
@@ -90,7 +91,7 @@ extern "C" {
             && pInputControl != nullptr && pInputControl->dwCtrlWakeupMask != 0
             && lpNumberOfCharsRead != nullptr)
         {
-            DebugOut(TEXT("RadLine   RadReadConsoleW 1\n"));
+            DebugOut(TEXT("RadLine   RadLineReadConsoleW 1\n"));
 
             // Assume first character is the completion character
             unsigned long t = 0;
@@ -267,23 +268,12 @@ extern "C" {
         else if (enabled == 2
             && (pInputControl == nullptr || pInputControl->nInitialChars == 0))
         {
-            DebugOut(TEXT("RadLine   RadReadConsoleW 2\n"));
-            DWORD modeout = 0;
-            GetConsoleMode(hStdOutput, &modeout);
-            SetConsoleMode(hStdOutput, modeout & ~ENABLE_PROCESSED_OUTPUT); // Needed so that cursor moves on to next line
-
-            size_t length = RadLine(hConsoleInput, hStdOutput, (wchar_t*) lpBuffer, nNumberOfCharsToRead);
-
-            SetConsoleMode(hStdOutput, modeout);
-
-            if (lpNumberOfCharsRead != nullptr)
-                *lpNumberOfCharsRead = static_cast<DWORD>(length);
-
-            return TRUE;
+            DebugOut(TEXT("RadLine   RadLineReadConsoleW 2\n"));
+            return RadReadConsole(hConsoleInput, (wchar_t*) lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
         }
         else
         {
-            DebugOut(TEXT("RadLine   RadReadConsoleW Orig\n"));
+            DebugOut(TEXT("RadLine   RadLineReadConsoleW Orig\n"));
             return pOrigReadConsoleW(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
         }
     }

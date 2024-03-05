@@ -5,7 +5,7 @@ extern "C" {
     extern decltype(&ReadConsoleW)  pOrigReadConsoleW;
 
     __declspec(dllexport)
-    BOOL WINAPI RadReadConsoleW(
+    BOOL WINAPI RadLineReadConsoleW(
         _In_     HANDLE  hConsoleInput,
         _Out_    LPVOID  lpBuffer,
         _In_     DWORD   nNumberOfCharsToRead,

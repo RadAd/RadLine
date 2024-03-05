@@ -31,8 +31,8 @@ BOOL APIENTRY DllMain(HMODULE hModule,
             {
                 FARPROC pTargetReadConsoleW = GetProcAddress(h, "ReadConsoleW");
                 DebugOut(TEXT("RadLine GetProcAddress pTargetReadConsoleW 0x%0p\n"), pTargetReadConsoleW);
-                status = MH_CreateHook(pTargetReadConsoleW, RadReadConsoleW, (LPVOID*) &pOrigReadConsoleW);
-                DebugOut(TEXT("RadLine MH_CreateHook ReadConsoleW %d 0x%0p 0x%0p 0x%0p\n"), status, pTargetReadConsoleW, RadReadConsoleW, pOrigReadConsoleW);
+                status = MH_CreateHook(pTargetReadConsoleW, RadLineReadConsoleW, (LPVOID*) &pOrigReadConsoleW);
+                DebugOut(TEXT("RadLine MH_CreateHook ReadConsoleW %d 0x%0p 0x%0p 0x%0p\n"), status, pTargetReadConsoleW, RadLineReadConsoleW, pOrigReadConsoleW);
                 status = MH_EnableHook(pTargetReadConsoleW);
                 DebugOut(TEXT("RadLine MH_EnableHook ReadConsoleW %d\n"), status);
             }
