@@ -1,3 +1,6 @@
 [submodule "minhook"]
 	path = minhook
 	url = https://github.com/m417z/minhook.git
+[submodule "RadReadConsole"]
+	path = RadReadConsole
+	url = https://github.com/RadAd/RadReadConsole.git
