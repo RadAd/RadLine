@@ -87,7 +87,7 @@ extern "C" {
             else
                 return pOrigReadConsoleW(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
         }
-        else if (enabled == 1
+        else if (enabled >= 1
             && pInputControl != nullptr && pInputControl->dwCtrlWakeupMask != 0
             && lpNumberOfCharsRead != nullptr)
         {
@@ -109,7 +109,10 @@ extern "C" {
             while (repeat)
             {
                 const COORD origpos = GetConsoleCursorPosition(hStdOutput);
-                r = pOrigReadConsoleW(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, &LocalInputControl);
+                if (enabled == 2)
+                    r = RadReadConsole(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, &LocalInputControl);
+                else
+                    r = pOrigReadConsoleW(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, &LocalInputControl);
                 CleanUpExtra(hStdOutput, &extra);
 
                 if (r)
@@ -264,12 +267,6 @@ extern "C" {
             }
 
             return r;
-        }
-        else if (enabled == 2
-            && (pInputControl == nullptr || pInputControl->nInitialChars == 0))
-        {
-            DebugOut(TEXT("RadLine   RadLineReadConsoleW 2\n"));
-            return RadReadConsole(hConsoleInput, (wchar_t*) lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
         }
         else
         {
