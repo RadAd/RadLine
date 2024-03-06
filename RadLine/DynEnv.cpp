@@ -44,7 +44,7 @@ DWORD ReadFromHandle(HANDLE hReadPipe, _Out_writes_to_opt_(nSize, return +1) LPW
 
 DWORD GetUserCurrentDirectory(_Out_writes_to_(nSize, return +1) LPWSTR lpBuffer, _In_ DWORD nSize)
 {
-    wchar_t UserProfile[MAX_PATH];
+    wchar_t UserProfile[MAX_PATH] = L"";
     DWORD len = GetEnvironmentVariableW(L"USERPROFILE", UserProfile);
     DWORD ret = GetCurrentDirectoryW(nSize, lpBuffer);
     if (ret >= len && _wcsnicmp(UserProfile, lpBuffer, len) == 0)

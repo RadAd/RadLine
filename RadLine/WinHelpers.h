@@ -36,6 +36,7 @@ template <size_t size>
 inline DWORD GetEnvironmentVariableW(LPCWSTR lpName, WCHAR (&rBuffer)[size])
 {
     DWORD len = GetEnvironmentVariableW(lpName, rBuffer, size);
+    _ASSERTE(len < size);
     rBuffer[len] = L'\0';
     return len;
 }
@@ -62,13 +63,19 @@ inline int GetEnvironmentInt(LPCWSTR name, int def = 0)
 template <size_t size>
 inline DWORD ExpandEnvironmentStringsA(LPCSTR lpSrc, CHAR(&rBuffer)[size])
 {
-    return ExpandEnvironmentStringsA(lpSrc, rBuffer, size);
+    DWORD len = ExpandEnvironmentStringsA(lpSrc, rBuffer, size);
+    _ASSERTE(len < size);
+    rBuffer[len] = L'\0';
+    return len;
 }
 
 template <size_t size>
 inline DWORD ExpandEnvironmentStringsW(LPCWSTR lpSrc, WCHAR(&rBuffer)[size])
 {
-    return ExpandEnvironmentStringsW(lpSrc, rBuffer, size);
+    DWORD len = ExpandEnvironmentStringsW(lpSrc, rBuffer, size);
+    _ASSERTE(len < size);
+    rBuffer[len] = L'\0';
+    return len;
 }
 
 inline DWORD ExpandEnvironmentStrings(_In_ LPWSTR lpSrc, _In_ DWORD nSize)

@@ -41,7 +41,7 @@ namespace {
             };
             for (const char* p : paths)
             {
-                char strPath[MAX_PATH];
+                char strPath[MAX_PATH] = "";
                 ExpandEnvironmentStringsA(p, strPath);
                 if (!cur_path.empty())
                     cur_path += L';';
