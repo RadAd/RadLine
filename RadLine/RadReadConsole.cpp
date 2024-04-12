@@ -93,6 +93,20 @@ extern "C" {
         {
             DebugOut(TEXT("RadLine   RadLineReadConsoleW 1\n"));
 
+            bool ismore = false;
+            {
+                std::vector<WCHAR> buf(6);
+
+                const CONSOLE_SCREEN_BUFFER_INFO csbi = GetConsoleScreenBufferInfo(hStdOutput);
+                const COORD pos = Add(csbi.dwCursorPosition, -(SHORT) buf.size(), csbi.dwSize.X);
+
+                DWORD read = 0;
+                ReadConsoleOutputCharacterW(hStdOutput, buf.data(), (DWORD) buf.size(), pos, &read);
+
+                if (wcsncmp(buf.data(), L"More? ", buf.size()) == 0)
+                    ismore = true;
+            }
+
             // Assume first character is the completion character
             unsigned long t = 0;
             _BitScanForward(&t, pInputControl->dwCtrlWakeupMask);
@@ -227,7 +241,7 @@ extern "C" {
             }
 
             // nNumberOfCharsToRead == 1023 when used for "set /p"
-            if (nNumberOfCharsToRead != 1023 && *lpNumberOfCharsRead > 2)
+            if (nNumberOfCharsToRead != 1023 && *lpNumberOfCharsRead > 2 && !ismore)
             {
                 wchar_t pre[100] = L"";
                 GetEnvironmentVariableW(L"RADLINE_PRE", pre);
@@ -237,6 +251,7 @@ extern "C" {
                 {
                     bufstring cmd(reinterpret_cast<TCHAR*>(lpBuffer), nNumberOfCharsToRead, *lpNumberOfCharsRead);
 
+#if 0
                     for (const wchar_t* w = cmd.begin(); w != cmd.end(); ++w)
                     {
                         if (*w == L')' && w[-1] != L'^')
@@ -245,6 +260,7 @@ extern "C" {
                             w++;
                         }
                     }
+#endif
 
                     if (pre[0] != TEXT('\0'))
                     {
