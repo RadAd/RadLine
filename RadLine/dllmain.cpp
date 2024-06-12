@@ -1,3 +1,4 @@
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
 #include "Debug.h"
@@ -6,6 +7,7 @@
 #include "..\minhook\include\MinHook.h"
 
 HMODULE g_hModule = NULL;
+DWORD WINAPI PipeThread(LPVOID lpvParam);
 
 BOOL APIENTRY DllMain(HMODULE hModule,
     DWORD  ul_reason_for_call,
@@ -47,6 +49,12 @@ BOOL APIENTRY DllMain(HMODULE hModule,
                 DebugOut(TEXT("RadLine MH_EnableHook GetEnvironmentVariableW %d\n"), status);
             }
 
+            HANDLE hThread = CreateThread(nullptr, 0, PipeThread, nullptr, 0, nullptr);
+            if (hThread)
+                CloseHandle(hThread);
+            else
+                DebugOut(TEXT("RadLine Error CreateThread %d\n"), GetLastError());
+
             OutputDebugString(TEXT("RadLine DLL_PROCESS_ATTACH done\n"));
         }
         break;
@@ -60,6 +68,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
             DebugOut(TEXT("RadLine MH_DisableHook GetEnvironmentVariableW %d\n"), status);
             status = MH_Uninitialize();
             DebugOut(TEXT("RadLine MH_Uninitialize %d\n"), status);
+            // TODO Shutdown PipeThread
             OutputDebugString(TEXT("RadLine DLL_PROCESS_DETACH done\n"));
         }
         break;

@@ -191,6 +191,7 @@
       </PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="DynEnv.cpp" />
+    <ClCompile Include="PipeThread.cpp" />
     <ClCompile Include="RadReadConsole.cpp" />
     <ClCompile Include="WinHelpers.cpp" />
   </ItemGroup>
