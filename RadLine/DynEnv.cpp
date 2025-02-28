@@ -179,9 +179,16 @@ extern "C" {
                 {
                     DWORD pid;
                     DWORD count = GetConsoleProcessList(&pid, 1);
+#if 0
+                    // Can't use wcscpy_s with overlapping strings
                     wcscpy_s(e + count, nSize - (e - lpBuffer) - count, e + 2);
                     wmemset(e, L'-', count);
                     ret += count - 2;
+#else
+                    bufstring str(lpBuffer, nSize, ret);
+                    str.replacecount(e, 2, L'-', count);
+                    ret = static_cast<DWORD>(str.length());
+#endif
                 }
                 for (int i = 0; lpBuffer[i] != L'\0'; ++i)
                     if (lpBuffer[i] == L'!')

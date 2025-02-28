@@ -122,6 +122,20 @@ public:
         assert(m_buf[m_len] == L'\0');
     }
 
+    void replacecount(const wchar_t* b, size_t l, wchar_t c, size_t count)
+    {
+        assert(b >= begin());
+        assert(b <= end());
+        wchar_t* lb = begin() + (b - begin());
+        assert(l >= 0);
+        assert((lb + l) <= end());
+        int d = (int)(count - l);
+        wmemmove(lb + l + d, lb + l, end() - lb - l + 1);
+        wmemset(lb, c, count);
+        m_len += d;
+        assert(m_buf[m_len] == L'\0');
+    }
+
     void append(const wchar_t* w, size_t l)
     {
         wmemmove(end(), w, l);
