@@ -154,14 +154,17 @@ extern "C" {
         {
             ret = GetUserCurrentDirectory(lpBuffer, nSize);
         }
+#if 0
         else if (_wcsicmp(lpName, L"RAWPROMPT") == 0)
         {
             ret = pOrigGetEnvironmentVariableW(L"PROMPT", lpBuffer, nSize);
         }
+#endif
         else
         {
             ret = pOrigGetEnvironmentVariableW(lpName, lpBuffer, nSize);
 
+#if 0
             if (wcscmp(lpName, L"PROMPT") == 0)
             {
                 LPWSTR e = wcsstr(lpBuffer, L"$U");
@@ -195,7 +198,9 @@ extern "C" {
                         lpBuffer[i] = L'%';
                 ret = ExpandEnvironmentStrings(lpBuffer, nSize); // Note doesn't use GetEnvironmentVariable
             }
-            else if (ret == 0)
+            else
+#endif
+                if (ret == 0)
             {
                 if (const wchar_t* p = wcschr(lpName, L'?'))
                 {
