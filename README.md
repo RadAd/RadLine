@@ -31,12 +31,22 @@ To enable:
 set RADLINE_AUTO_TERMINATE_BATCH=1
 ```
 
-This setting will auto respond `y` to the `Terminate batch job (Y/N)?` prompt.
+This setting will auto-respond `y` to the `Terminate batch job (Y/N)?` prompt.
 
 Expand Tilde
 ------------
 
 The `~` at the start of an argument is expanded to `%USERPROFILE%`.
+
+Pre command execution
+----------------------
+
+The contents of the environment variable `RADLINE_PRE` are prepended to the current command.
+
+For example:
+```
+set RADLINE_PRE=echo Start
+```
 
 Post command execution
 ----------------------
@@ -60,7 +70,7 @@ Dynamic environment variables
 Install
 -------
 
-To install, download the zip and decompress to `%APPDATA%\Radsoft\RadLine`
+To install, download the [zip](https://github.com/RadAd/RadLine/releases/latest) and decompress to `%APPDATA%\Radsoft\RadLine`
 
 Add the following lines to your cmd startup script:
 ```
