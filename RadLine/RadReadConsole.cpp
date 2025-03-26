@@ -25,13 +25,13 @@ extern "C" {
 
     // Designed to replace ReadConsoleW
     __declspec(dllexport)
-    BOOL WINAPI RadLineReadConsoleW(
-        _In_     HANDLE  hConsoleInput,
-        _Out_    LPVOID  lpBuffer,
-        _In_     DWORD   nNumberOfCharsToRead,
-        _Out_    LPDWORD lpNumberOfCharsRead,
-        _In_opt_ PCONSOLE_READCONSOLE_CONTROL pInputControl
-    )
+        BOOL WINAPI RadLineReadConsoleW(
+            _In_     HANDLE  hConsoleInput,
+            _Out_    LPVOID  lpBuffer,
+            _In_     DWORD   nNumberOfCharsToRead,
+            _Out_    LPDWORD lpNumberOfCharsRead,
+            _In_opt_ PCONSOLE_READCONSOLE_CONTROL pInputControl
+        )
     {
         DebugOut(TEXT("RadLine RadLineReadConsoleW 0x%08p 0x%p %d 0x%p 0x%p\n"), hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
         if (lpNumberOfCharsRead != nullptr)
@@ -113,14 +113,14 @@ extern "C" {
             const WCHAR c = (WCHAR) t;
 
             BOOL r = TRUE;
-            BOOL repeat = TRUE;
+            BOOL complete = FALSE;
             Extra extra = {};
 
             CONSOLE_READCONSOLE_CONTROL LocalInputControl = *pInputControl;
             const struct {} pInputControl = {}; // Hide variable
             LocalInputControl.dwCtrlWakeupMask |= 1 << ('e' - 'a' + 1); // Ctrl+e
 
-            while (repeat)
+            while (TRUE)
             {
                 const COORD origpos = GetConsoleCursorPosition(hStdOutput);
                 if (enabled == 2)
@@ -129,96 +129,92 @@ extern "C" {
                     r = pOrigReadConsoleW(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, &LocalInputControl);
                 CleanUpExtra(hStdOutput, &extra);
 
-                if (r)
+                if (!r)
+                    break;
+
+                const CONSOLE_SCREEN_BUFFER_INFO csbi = GetConsoleScreenBufferInfo(hStdOutput);
+                const COORD startpos = Add(origpos, -(SHORT) LocalInputControl.nInitialChars, csbi.dwSize.X);
+                size_t CursorOffset = Diff(csbi.dwCursorPosition, startpos, csbi.dwSize.X);
+
+                if (CursorOffset >= *lpNumberOfCharsRead)
                 {
-                    const CONSOLE_SCREEN_BUFFER_INFO csbi = GetConsoleScreenBufferInfo(hStdOutput);
-                    const COORD startpos = Add(origpos, - (SHORT) LocalInputControl.nInitialChars, csbi.dwSize.X);
-                    size_t CursorOffset = Diff(csbi.dwCursorPosition, startpos, csbi.dwSize.X);
+                    complete = TRUE;
+                    break;
+                }
 
-                    if (CursorOffset < *lpNumberOfCharsRead)
+                WCHAR* const pStr = reinterpret_cast<TCHAR*>(lpBuffer);
+                WCHAR* const pChar = pStr + CursorOffset;
+                const WCHAR cChar = *pChar;
+
+                // Looks like a bug but the tab character overwrites instead of inserts, but the length is still increased by one
+                DWORD read = 0;
+                ReadConsoleOutputCharacter(hStdOutput, pChar, 1, csbi.dwCursorPosition, &read);
+                --*lpNumberOfCharsRead;
+
+                if (cChar == c)
+                {
+                    bufstring line(pStr, nNumberOfCharsToRead, *lpNumberOfCharsRead);
+                    Complete(hStdOutput, line, &CursorOffset, &extra, csbi.dwSize);
+                    LocalInputControl.nInitialChars = (ULONG) line.length();
+                }
+                else if (cChar == ('e' - 'a' + 1))
+                {
+                    wchar_t CurrentDirectory[MAX_PATH] = L"";
+                    GetCurrentDirectoryW(CurrentDirectory);
+                    SetEnvironmentVariableW(L"CD", CurrentDirectory);
+
+                    pStr[*lpNumberOfCharsRead] = L'\0';
+                    LocalInputControl.nInitialChars = ExpandEnvironmentStrings(pStr, nNumberOfCharsToRead) - 1;
+
+                    SetEnvironmentVariableW(L"CD", nullptr);
+
+                    if (CursorOffset != 0)
                     {
-                        BOOL fixcursor = TRUE;
-                        WCHAR* const pStr = reinterpret_cast<TCHAR*>(lpBuffer);
-                        WCHAR* const pChar = pStr + CursorOffset;
-                        const WCHAR cChar = *pChar;
-
-                        // Looks like a bug but the tab character overwrites instead of inserts, but the length is still increased by one
-                        DWORD read = 0;
-                        ReadConsoleOutputCharacter(hStdOutput, pChar, 1, csbi.dwCursorPosition, &read);
-                        --*lpNumberOfCharsRead;
-
-                        if (cChar == c)
-                        {
-                            bufstring line(pStr, nNumberOfCharsToRead, *lpNumberOfCharsRead);
-                            Complete(hStdOutput, line, &CursorOffset, &extra, csbi.dwSize);
-                            LocalInputControl.nInitialChars = (ULONG) line.length();
-                        }
-                        else if (cChar == ('e' - 'a' + 1))
-                        {
-                            wchar_t CurrentDirectory[MAX_PATH];
-                            GetCurrentDirectoryW(CurrentDirectory);
-                            SetEnvironmentVariableW(L"CD", CurrentDirectory);
-
-                            pStr[*lpNumberOfCharsRead] = L'\0';
-                            LocalInputControl.nInitialChars = ExpandEnvironmentStrings(pStr, nNumberOfCharsToRead) - 1;
-
-                            SetEnvironmentVariableW(L"CD", nullptr);
-
-                            if (CursorOffset != 0)
-                            {
-                                const COORD pos = Add(csbi.dwCursorPosition, -(SHORT) CursorOffset, csbi.dwSize.X);
-                                SetConsoleCursorPosition(hStdOutput, pos);
-                            }
-
-                            WriteConsole(hStdOutput, pStr, LocalInputControl.nInitialChars, nullptr, 0);
-                            CursorOffset = LocalInputControl.nInitialChars;
-                        }
-                        else
-                        {
-                            ++*lpNumberOfCharsRead;
-                            LocalInputControl.nInitialChars = *lpNumberOfCharsRead;
-                            *pChar = cChar;
-                            repeat = FALSE;
-                            fixcursor = FALSE;
-                        }
-
-                        if (fixcursor)
-                        {   // Leave cursor at end of line, pOrigReadConsoleW has no way of starting with the cursor in the middle
-                            if (LocalInputControl.nInitialChars != CursorOffset)
-                            {
-                                COORD pos = GetConsoleCursorPosition(hStdOutput);
-                                pos = Add(pos, (SHORT) (LocalInputControl.nInitialChars - CursorOffset), csbi.dwSize.X);
-                                SetConsoleCursorPosition(hStdOutput, pos);
-                            }
-                            assert(GetConsoleCursorPosition(hStdOutput) == Add(startpos, (SHORT) LocalInputControl.nInitialChars, csbi.dwSize.X));
-
-                            if (LocalInputControl.nInitialChars != CursorOffset)
-                            {
-                                // Insert left key into input queue to return cursor to correct position
-                                const HANDLE hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-
-                                INPUT_RECORD ir[2] = {};
-                                ir[0].EventType = { KEY_EVENT };
-                                ir[0].Event.KeyEvent.bKeyDown = TRUE;
-                                ir[0].Event.KeyEvent.wVirtualKeyCode = VK_LEFT;
-                                ir[1].EventType = { KEY_EVENT };
-                                ir[1].Event.KeyEvent.bKeyDown = FALSE;
-                                ir[1].Event.KeyEvent.wVirtualKeyCode = VK_LEFT;
-
-                                DWORD written = 0;
-                                for (size_t i = CursorOffset; i < LocalInputControl.nInitialChars; ++i)
-                                    WriteConsoleInput(hStdInput, ir, 2, &written);
-                            }
-                        }
+                        const COORD pos = Add(csbi.dwCursorPosition, -(SHORT) CursorOffset, csbi.dwSize.X);
+                        SetConsoleCursorPosition(hStdOutput, pos);
                     }
-                    else
-                        repeat = false;
+
+                    WriteConsole(hStdOutput, pStr, LocalInputControl.nInitialChars, nullptr, 0);
+                    CursorOffset = LocalInputControl.nInitialChars;
                 }
                 else
-                    repeat = false;
+                {
+                    ++*lpNumberOfCharsRead;
+                    LocalInputControl.nInitialChars = *lpNumberOfCharsRead;
+                    *pChar = cChar;
+                    break;
+                }
+
+                // Leave cursor at end of line, pOrigReadConsoleW has no way of starting with the cursor in the middle
+                if (LocalInputControl.nInitialChars != CursorOffset)
+                {
+                    COORD pos = GetConsoleCursorPosition(hStdOutput);
+                    pos = Add(pos, (SHORT) (LocalInputControl.nInitialChars - CursorOffset), csbi.dwSize.X);
+                    SetConsoleCursorPosition(hStdOutput, pos);
+                }
+                assert(GetConsoleCursorPosition(hStdOutput) == Add(startpos, (SHORT) LocalInputControl.nInitialChars, csbi.dwSize.X));
+
+                if (LocalInputControl.nInitialChars != CursorOffset)
+                {
+                    // Insert left key into input queue to return cursor to correct position
+                    const HANDLE hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+
+                    INPUT_RECORD ir[2] = {};
+                    ir[0].EventType = { KEY_EVENT };
+                    ir[0].Event.KeyEvent.bKeyDown = TRUE;
+                    ir[0].Event.KeyEvent.wVirtualKeyCode = VK_LEFT;
+                    ir[1].EventType = { KEY_EVENT };
+                    ir[1].Event.KeyEvent.bKeyDown = FALSE;
+                    ir[1].Event.KeyEvent.wVirtualKeyCode = VK_LEFT;
+
+                    DWORD written = 0;
+                    for (size_t i = CursorOffset; i < LocalInputControl.nInitialChars; ++i)
+                        WriteConsoleInput(hStdInput, ir, 2, &written);
+                }
             }
 
-            if (*lpNumberOfCharsRead > 2 && GetEnvironmentInt(L"RADLINE_TILDE", 1))
+            // nNumberOfCharsToRead == 1023 when used for "set /p"
+            if (complete && nNumberOfCharsToRead != 1023 && *lpNumberOfCharsRead > 2 && GetEnvironmentInt(L"RADLINE_TILDE", 1))
             {
                 const wchar_t replace[] = L"%USERPROFILE%";
                 TCHAR* start = reinterpret_cast<TCHAR*>(lpBuffer);
@@ -241,7 +237,7 @@ extern "C" {
             }
 
             // nNumberOfCharsToRead == 1023 when used for "set /p"
-            if (nNumberOfCharsToRead != 1023 && *lpNumberOfCharsRead > 2 && !ismore)
+            if (complete && nNumberOfCharsToRead != 1023 && *lpNumberOfCharsRead > 2 && !ismore)
             {
                 wchar_t pre[100] = L"";
                 GetEnvironmentVariableW(L"RADLINE_PRE", pre);
@@ -265,16 +261,18 @@ extern "C" {
                     if (pre[0] != TEXT('\0'))
                     {
                         const wchar_t* w = cmd.begin();
-                        cmd.insert(w, L"&(");
+                        cmd.insert(w, L")&(");
                         cmd.insert(w, pre);
+                        cmd.insert(w, L"(");
                     }
                     else
                         cmd.insert(cmd.begin(), L"(");
                     if (post[0] != TEXT('\0'))
                     {
                         const wchar_t* w = cmd.end() - 2;
+                        cmd.insert(w, L")");
                         cmd.insert(w, post);
-                        cmd.insert(w, L")&");
+                        cmd.insert(w, L")&(");
                     }
                     else
                         cmd.insert(cmd.end() - 2, L")");
