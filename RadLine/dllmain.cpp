@@ -16,37 +16,41 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 {
     g_hModule = hModule;
 
+    const struct HookSpec
+    {
+        LPCTSTR strModule;
+        LPCSTR strFunction;
+        LPVOID pDetour;
+        LPVOID* ppOriginal;
+    } hooks[] = {
+        { TEXT("KernelBase.dll"),   "ReadConsoleW",             RadLineReadConsoleW,        (LPVOID*) &pOrigReadConsoleW },
+        { TEXT("KernelBase.dll"),   "GetEnvironmentVariableW",  RadGetEnvironmentVariableW, (LPVOID*) &pOrigGetEnvironmentVariableW },
+    };
+
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
         {
             OutputDebugString(TEXT("RadLine DLL_PROCESS_ATTACH\n"));
 
-            HMODULE h = LoadLibrary(L"KernelBase.dll");
-            DebugOut(TEXT("RadLine KernelBase 0x%x\n"), HandleToULong(h));
-
             MH_STATUS status = MH_OK;
             status = MH_Initialize();
             DebugOut(TEXT("RadLine MH_Initialize %d\n"), status);
 
-            if (true && h != NULL)
+            for (const HookSpec& hs : hooks)
             {
-                FARPROC pTargetReadConsoleW = GetProcAddress(h, "ReadConsoleW");
-                DebugOut(TEXT("RadLine GetProcAddress pTargetReadConsoleW 0x%0p\n"), pTargetReadConsoleW);
-                status = MH_CreateHook(pTargetReadConsoleW, RadLineReadConsoleW, (LPVOID*) &pOrigReadConsoleW);
-                DebugOut(TEXT("RadLine MH_CreateHook ReadConsoleW %d 0x%0p 0x%0p 0x%0p\n"), status, pTargetReadConsoleW, RadLineReadConsoleW, pOrigReadConsoleW);
-                status = MH_EnableHook(pTargetReadConsoleW);
-                DebugOut(TEXT("RadLine MH_EnableHook ReadConsoleW %d\n"), status);
-            }
-
-            if (true && h != NULL)
-            {
-                FARPROC pTargetGetEnvironmentVariableW = GetProcAddress(h, "GetEnvironmentVariableW");
-                DebugOut(TEXT("RadLine GetProcAddress pTargetGetEnvironmentVariableW 0x%0p\n"), pTargetGetEnvironmentVariableW);
-                status = MH_CreateHook(pTargetGetEnvironmentVariableW, RadGetEnvironmentVariableW, (LPVOID*) &pOrigGetEnvironmentVariableW);
-                DebugOut(TEXT("RadLine MH_CreateHook GetEnvironmentVariableW %d 0x%0p 0x%0p 0x%0p\n"), status, pTargetGetEnvironmentVariableW, RadGetEnvironmentVariableW, pOrigGetEnvironmentVariableW);
-                status = MH_EnableHook(pTargetGetEnvironmentVariableW);
-                DebugOut(TEXT("RadLine MH_EnableHook GetEnvironmentVariableW %d\n"), status);
+                const HMODULE h = GetModuleHandle(hs.strModule);
+                DebugOut(TEXT("RadLine %s 0x%x\n"), hs.strModule, HandleToULong(h));
+                if (h == NULL)
+                    continue;
+                const FARPROC pTarget = GetProcAddress(h, hs.strFunction);
+                if (pTarget == nullptr)
+                    continue;
+                DebugOut(TEXT("RadLine GetProcAddress %S 0x%0p\n"), hs.strFunction, pTarget);
+                status = MH_CreateHook(pTarget, hs.pDetour, hs.ppOriginal);
+                DebugOut(TEXT("RadLine MH_CreateHook %S %d 0x%0p 0x%0p\n"), hs.strFunction, status, hs.pDetour, *hs.ppOriginal);
+                status = MH_EnableHook(pTarget);
+                DebugOut(TEXT("RadLine MH_EnableHook %S %d\n"), hs.strFunction, status);
             }
 
             HANDLE hThread = CreateThread(nullptr, 0, PipeThread, nullptr, 0, nullptr);
@@ -62,10 +66,20 @@ BOOL APIENTRY DllMain(HMODULE hModule,
         {
             OutputDebugString(TEXT("RadLine DLL_PROCESS_DETACH\n"));
             MH_STATUS status = MH_OK;
-            status = MH_DisableHook(ReadConsoleW);
-            DebugOut(TEXT("RadLine MH_DisableHook ReadConsoleW %d\n"), status);
-            status = MH_DisableHook(GetEnvironmentVariableW);
-            DebugOut(TEXT("RadLine MH_DisableHook GetEnvironmentVariableW %d\n"), status);
+
+            for (const HookSpec& hs : hooks)
+            {
+                const HMODULE h = GetModuleHandle(hs.strModule);
+                DebugOut(TEXT("RadLine %s 0x%x\n"), hs.strModule, HandleToULong(h));
+                if (h == NULL)
+                    continue;
+                const FARPROC pTarget = GetProcAddress(h, hs.strFunction);
+                if (pTarget == nullptr)
+                    continue;
+                status = MH_DisableHook(pTarget);
+                DebugOut(TEXT("RadLine MH_DisableHook %S %d\n"), hs.strFunction, status);
+            }
+
             status = MH_Uninitialize();
             DebugOut(TEXT("RadLine MH_Uninitialize %d\n"), status);
             // TODO Shutdown PipeThread
