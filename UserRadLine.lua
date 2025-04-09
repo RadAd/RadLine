@@ -10,11 +10,6 @@ setmetatable(cmd_output, {
     __index = LookUpExt
 })
 
-options = {}
-setmetatable(options, {
-    __index = LookUpExt
-})
-
 function FindPotentialEnv(params, p)
     local s,i = GetParam(params, p)
     if p == 2 then
@@ -36,12 +31,7 @@ end
 
 function FindPotentialWhere(params, p)
     local s,i = GetParam(params, p)
-    if s:sub(1, 1) == "/" then
-        local command = params[1]
-        local f = {}
-        table.concat_if(f, s:lower(), options[command])
-        return f
-    elseif p > 1 and params[p - 1] == "/R" then
+    if p > 1 and params[p - 1] == "/R" then
         return FindFiles(s.."*", FindFilesE.DirOnly), i
     else
         return FindPathExeFiles(s), i
@@ -49,16 +39,11 @@ function FindPotentialWhere(params, p)
 end
 
 command_fn["where.exe"] = FindPotentialWhere
-options["where.exe"] = { "/r", "/q", "/f", "/t" }
+command_options["where.exe"] = { "/r", "/q", "/f", "/t" }
 
 function FindPotentialExe(params, p)
     local s,i = GetParam(params, p)
-    if s:sub(1, 1) == "/" then
-        local command = params[1]
-        local f = {}
-        table.concat_if(f, s:lower(), options[command])
-        return f
-    elseif p == 2 then
+    if p == 2 then
         local f = {}
         table.concat_if(f, s:lower(), internal)
         table.concat(f, FindFiles(s.."*", FindFilesE.DirOnly))
@@ -70,21 +55,8 @@ function FindPotentialExe(params, p)
     end
 end
 
-function FindPotentialRegsvr32(params, p)
-    local s,i = GetParam(params, p)
-    if s:sub(1, 1) == "/" then
-        local command = params[1]
-        local f = {}
-        table.concat_if(f, s:lower(), options[command])
-        DebugOutLn("f "..#f)
-        return f
-    else
-        return FindFiles(s.."*.dll", FindFilesE.FileOnly), i
-    end
-end
-
-command_fn["regsvr32.exe"] = FindPotentialRegsvr32
-options["regsvr32.exe"] = { "/u", "/s", "/i", "/n" }
+command_fn["regsvr32.exe"] = FindPotentialDlls
+command_options["regsvr32.exe"] = { "/u", "/s", "/i", "/n" }
 
 function FindPotentialCmdOutput(params, p)
     local s,i = GetParam(params, p)

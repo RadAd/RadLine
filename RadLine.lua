@@ -180,14 +180,10 @@ function FindPotentialDirs(params, p)
     return FindFiles(s.."*", FindFilesE.DirOnly), i
 end
 
-command_fn = {
-    _default = FindPotentialDefault,
-    cd = FindPotentialDirs,
-    chdir = FindPotentialDirs,
-    md = FindPotentialDirs,
-    mkdir = FindPotentialDirs,
-    pushd = FindPotentialDirs,
-}
+function FindPotentialDlls(params, p)
+    local s,i = GetParam(params, p)
+    return FindFiles(s.."*.dll", FindFilesE.FileOnly), i
+end
 
 function LookUpExt(t, key)
     local pathext = win32.GetEnvironmentVariable("PATHEXT"):split(";")
@@ -200,9 +196,16 @@ function LookUpExt(t, key)
     return rawget(t, "_default")
 end
 
-setmetatable(command_fn, {
-    __index = LookUpExt
-})
+command_fn = setmetatable({
+    _default = FindPotentialDefault,
+    cd = FindPotentialDirs,
+    chdir = FindPotentialDirs,
+    md = FindPotentialDirs,
+    mkdir = FindPotentialDirs,
+    pushd = FindPotentialDirs,
+}, { __index = LookUpExt })
+
+command_options = setmetatable({}, { __index = LookUpExt })
 
 other_env = {
     "%CD%", "%CMDCMDLINE%", "%CMDEXTVERSION%", "%DATE%", "%ERRORLEVEL%", "%RANDOM%", "%TIME%",
@@ -247,8 +250,14 @@ function FindPotential(params, p)
         return FindFiles(s.."*", FindFilesE.All), i
     else
         local command = params[1]
-        -- TODO Unquote and remove path ???
-        local fn = command_fn[command]
-        return fn(params, p)
+        if s:sub(1, 1) == "/" then
+            local f = {}
+            table.concat_if(f, s:lower(), command_options[command])
+            return f
+        else
+            -- TODO Unquote and remove path ???
+            local fn = command_fn[command]
+            return fn(params, p)
+        end
     end
 end
