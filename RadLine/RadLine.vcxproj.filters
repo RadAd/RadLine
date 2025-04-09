@@ -8,6 +8,7 @@
     <ClCompile Include="Debug.cpp" />
     <ClCompile Include="DynEnv.cpp" />
     <ClCompile Include="PipeThread.cpp" />
+    <ClCompile Include="LuaHelpers.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="WinHelpers.h" />
@@ -19,6 +20,7 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="DynEnv.h" />
     <ClInclude Include="StringUtils.h" />
+    <ClInclude Include="LuaHelpers.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="RadLine.rc" />
@@ -33,6 +35,9 @@
       <Filter>Scripts</Filter>
     </CopyFileToFolders>
     <CopyFileToFolders Include="..\UserRadLine.lua">
+      <Filter>Scripts</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="..\UserRadEnv.lua">
       <Filter>Scripts</Filter>
     </CopyFileToFolders>
   </ItemGroup>

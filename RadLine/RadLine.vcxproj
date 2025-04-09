@@ -191,6 +191,7 @@
       </PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="DynEnv.cpp" />
+    <ClCompile Include="LuaHelpers.cpp" />
     <ClCompile Include="PipeThread.cpp" />
     <ClCompile Include="RadReadConsole.cpp" />
     <ClCompile Include="WinHelpers.cpp" />
@@ -200,6 +201,7 @@
     <ClInclude Include="Completion.h" />
     <ClInclude Include="Debug.h" />
     <ClInclude Include="DynEnv.h" />
+    <ClInclude Include="LuaHelpers.h" />
     <ClInclude Include="LuaUtils.h" />
     <ClInclude Include="RadReadConsole.h" />
     <ClInclude Include="resource.h" />
@@ -230,6 +232,12 @@
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</DeploymentContent>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="..\UserRadEnv.lua">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
       <FileType>Document</FileType>
     </CopyFileToFolders>
   </ItemGroup>

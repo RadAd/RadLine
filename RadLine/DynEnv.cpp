@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <wchar.h>
 #include <shlwapi.h>
+#include <memory>
 
 typedef decltype(&GetEnvironmentVariableW) FuncGetEnvironmentVariableW;
 
@@ -9,57 +10,81 @@ extern HMODULE g_hModule;
 
 #include "bufstring.h"
 #include "WinHelpers.h"
+#include "LuaUtils.h"
+#include "LuaHelpers.h"
+#include "Debug.h"
 
-DWORD ReadFromHandle(HANDLE hReadPipe, _Out_writes_to_opt_(nSize, return +1) LPWSTR lpBuffer, _In_ DWORD nSize)
-{
-    if (lpBuffer == nullptr)
-        return 0;
-
-    DWORD dwReadTotal = 0;
-    //LPSTR lpBuffer2 = (LPSTR) lpBuffer;
-    //nSize /= sizeof(WCHAR);
-
-    for (;;)
-    {
-        BYTE Buffer[1024];
-        DWORD dwRead;
-        if (!ReadFile(hReadPipe, &Buffer, ARRAYSIZE(Buffer), &dwRead, NULL))
-            break;
-
-        // TODO Do this once after we get all text
-        INT iResult = 0;
-        if (IsTextUnicode(Buffer, dwRead, &iResult))
-        {
-            memcpy_s(lpBuffer + dwReadTotal, nSize - dwReadTotal, Buffer, dwRead);
-            dwReadTotal += dwRead / sizeof(WCHAR);
-        }
-        else
-            dwReadTotal += MultiByteToWideChar(CP_UTF8, 0, (LPCSTR) &Buffer, dwRead, lpBuffer + dwReadTotal, nSize - dwReadTotal);
-
-        //if (!bSuccess) break;
-    }
-    lpBuffer[dwReadTotal] = L'\0';
-    return dwReadTotal;
+extern "C" {
+    FuncGetEnvironmentVariableW pOrigGetEnvironmentVariableW = nullptr;
 }
 
-DWORD GetUserCurrentDirectory(_Out_writes_to_(nSize, return +1) LPWSTR lpBuffer, _In_ DWORD nSize)
+namespace
 {
-    wchar_t UserProfile[MAX_PATH] = L"";
-    DWORD len = GetEnvironmentVariableW(L"USERPROFILE", UserProfile);
-    DWORD ret = GetCurrentDirectoryW(nSize, lpBuffer);
-    if (ret >= len && _wcsnicmp(UserProfile, lpBuffer, len) == 0)
+    int l_OrigGetEnvironmentVariable(lua_State* lua)
     {
-        bufstring s(lpBuffer, nSize, ret);
-        s.replace(s.begin(), len, L"~", 1);
-        ret = static_cast<DWORD>(s.length());
+        std::wstring name = From_utf8(luaL_checklstring(lua, -1, nullptr));
+        std::vector<TCHAR> buffer(8192);
+        const DWORD ret = pOrigGetEnvironmentVariableW(name.c_str(), buffer.data(), (DWORD) buffer.size());
+        LuaPush(lua, std::wstring_view(buffer.data(), ret));
+        return 1;  /* number of results */
     }
-    return ret;
+
+    lua_State* InitLua()
+    {
+        std::unique_ptr<lua_State, LuaCloser> L(luaL_newstate());
+        luaL_openlibs(L.get());
+        SetLuaPath(L.get());
+        return L.release();
+    }
+
+    DWORD ReadFromHandle(HANDLE hReadPipe, _Out_writes_to_opt_(nSize, return +1) LPWSTR lpBuffer, _In_ DWORD nSize)
+    {
+        if (lpBuffer == nullptr)
+            return 0;
+
+        DWORD dwReadTotal = 0;
+        //LPSTR lpBuffer2 = (LPSTR) lpBuffer;
+        //nSize /= sizeof(WCHAR);
+
+        for (;;)
+        {
+            BYTE Buffer[1024];
+            DWORD dwRead;
+            if (!ReadFile(hReadPipe, &Buffer, ARRAYSIZE(Buffer), &dwRead, NULL))
+                break;
+
+            // TODO Do this once after we get all text
+            INT iResult = 0;
+            if (IsTextUnicode(Buffer, dwRead, &iResult))
+            {
+                memcpy_s(lpBuffer + dwReadTotal, nSize - dwReadTotal, Buffer, dwRead);
+                dwReadTotal += dwRead / sizeof(WCHAR);
+            }
+            else
+                dwReadTotal += MultiByteToWideChar(CP_UTF8, 0, (LPCSTR) &Buffer, dwRead, lpBuffer + dwReadTotal, nSize - dwReadTotal);
+
+            //if (!bSuccess) break;
+        }
+        lpBuffer[dwReadTotal] = L'\0';
+        return dwReadTotal;
+    }
+
+    DWORD GetUserCurrentDirectory(_Out_writes_to_(nSize, return +1) LPWSTR lpBuffer, _In_ DWORD nSize)
+    {
+        wchar_t UserProfile[MAX_PATH] = L"";
+        DWORD len = GetEnvironmentVariableW(L"USERPROFILE", UserProfile);
+        DWORD ret = GetCurrentDirectoryW(nSize, lpBuffer);
+        if (ret >= len && _wcsnicmp(UserProfile, lpBuffer, len) == 0)
+        {
+            bufstring s(lpBuffer, nSize, ret);
+            s.replace(s.begin(), len, L"~", 1);
+            ret = static_cast<DWORD>(s.length());
+        }
+        return ret;
+    }
 }
 
 extern "C" {
-
-    FuncGetEnvironmentVariableW pOrigGetEnvironmentVariableW = nullptr;
-
     __declspec(dllexport)
     DWORD WINAPI RadGetEnvironmentVariableW(
         _In_opt_ LPCWSTR lpName,
@@ -67,6 +92,18 @@ extern "C" {
         _In_ DWORD nSize
     )
     {
+        std::wstring msg;
+        static std::unique_ptr<lua_State, LuaCloser> L;
+        if (!L)
+        {
+            L.reset(InitLua());
+            lua_register(L.get(), "OrigGetEnvironmentVariable", l_OrigGetEnvironmentVariable);
+            LuaRequire(L.get(), "UserRadEnv", msg);
+        }
+        assert(!L || lua_gettop(L.get()) == 0);
+        if (!msg.empty())
+            DebugOut(TEXT("Error loading UserRadEnv: %s\n"), msg.c_str());
+
         DWORD ret = 0;
         const size_t len = lpName != nullptr ? wcslen(lpName) : 0;
 
@@ -140,6 +177,7 @@ extern "C" {
             *pFileName = L'\0';
             ret = static_cast<DWORD>(pFileName - lpBuffer);
         }
+#if 0
         else if (_wcsicmp(lpName, L"__PID__") == 0)
         {
             DWORD pid = GetCurrentProcessId();
@@ -150,6 +188,7 @@ extern "C" {
             DWORD tick = GetTickCount();
             ret = wsprintf(lpBuffer, L"%d", tick);
         }
+#endif
         else if (_wcsicmp(lpName, L"USERCD") == 0)
         {
             ret = GetUserCurrentDirectory(lpBuffer, nSize);
@@ -162,7 +201,28 @@ extern "C" {
 #endif
         else
         {
-            ret = pOrigGetEnvironmentVariableW(lpName, lpBuffer, nSize);
+            if (lua_getglobal(L.get(), "GetEnvironmentVariable") != LUA_TFUNCTION)
+            {
+                msg = L"GetEnvironmentVariable is not a function";
+                lua_pop(L.get(), 1);
+
+                ret = pOrigGetEnvironmentVariableW(lpName, lpBuffer, nSize);
+            }
+            else if (
+                LuaPush(L.get(), lpName);
+                lua_pcall(L.get(), 1, 1, 0) != LUA_OK)
+            {
+                msg = LuaPopString(L.get());
+                DebugOut(TEXT("Error calling GetEnvironmentVariable: %s\n"), msg.c_str());
+
+                ret = pOrigGetEnvironmentVariableW(lpName, lpBuffer, nSize);
+            }
+            else
+            {
+                const std::wstring result = LuaPopString(L.get());
+                wcscpy_s(lpBuffer, nSize, result.c_str());
+                ret = (DWORD) result.size();
+            }
 
 #if 0
             if (wcscmp(lpName, L"PROMPT") == 0)
