@@ -1,10 +1,5 @@
 #include "WinHelpers.h"
 
-#include <Windows.h>
-#include <algorithm>
-#include <cctype>
-#include <sstream>
-
 namespace {
     inline bool Match(const std::wstring& s, const wchar_t* p, size_t len)
     {

@@ -7,7 +7,9 @@ extern "C"
 #include "lualib.h"
 }
 
+//#include <assert.h>
 #include "StringUtils.h"
+#include "WinHelpers.h"
 
 class LuaCloser
 {
@@ -18,7 +20,7 @@ public:
     }
 };
 
-void check(bool b, const char* msg)
+inline void check(bool b, const char* msg)
 {
     if (!b)
         throw std::exception(msg);
@@ -30,11 +32,13 @@ inline void LuaPush(lua_State* lua, std::wstring_view w)
     lua_pushstring(lua, s.c_str());
 }
 
+#if 0
 inline void LuaPush(lua_State* lua, const std::wstring& w)
 {
     std::string s(To_utf8(w));
     lua_pushstring(lua, s.c_str());
 }
+#endif
 
 inline void LuaPush(lua_State* lua, const std::vector<std::wstring_view>& v)
 {

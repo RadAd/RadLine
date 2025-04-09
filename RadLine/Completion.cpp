@@ -3,8 +3,6 @@
 #undef min
 #undef max
 
-#include <shlwapi.h>
-
 #include <vector>
 #include <algorithm>
 #include <string_view>
@@ -13,67 +11,11 @@
 
 #include "bufstring.h"
 #include "WinHelpers.h"
-#include "Debug.h"
+//#include "Debug.h"
 #include "LuaUtils.h"
-
-extern HMODULE g_hModule;
+#include "LuaHelpers.h"
 
 namespace {
-    void SetLuaPath(lua_State* lua)
-    {
-        lua_getglobal(lua, "package");
-        {
-            char strRadLinePath[MAX_PATH];
-            DWORD len = GetModuleFileNameA(g_hModule, strRadLinePath, ARRAYSIZE(strRadLinePath));
-            char* strFilename = PathFindFileNameA(strRadLinePath);
-            strFilename[-1] = '\0';
-
-            std::string cur_path;
-#if 0
-            lua_getfield(lua, -1, "path");
-            cur_path = LuaPopString(lua);
-#endif
-
-            const char* paths[] = {
-                R"(%LOCALAPPDATA%\RadSoft\RadLine)",
-                R"(%ProgramData%\RadSoft\RadLine)",
-                strRadLinePath,
-            };
-            for (const char* p : paths)
-            {
-                char strPath[MAX_PATH] = "";
-                ExpandEnvironmentStringsA(p, strPath);
-                if (!cur_path.empty())
-                    cur_path += L';';
-                cur_path += strPath;
-                cur_path += R"(\?;)";
-                cur_path += strPath;
-                cur_path += R"(\?.lua)";
-            }
-            lua_pushstring(lua, cur_path.c_str());
-            lua_setfield(lua, -2, "path");
-        }
-
-        {
-            HMODULE hLua = GetModuleHandle(L"lua.dll");
-            char strPath[MAX_PATH];
-            DWORD len = GetModuleFileNameA(hLua, strPath, ARRAYSIZE(strPath));
-            char* strFilename = PathFindFileNameA(strPath);
-            strcpy_s(strFilename, ARRAYSIZE(strPath) - len, "?.dll");
-            lua_pushstring(lua, strPath);
-            lua_setfield(lua, -2, "cpath");
-        }
-
-        lua_pop(lua, 1);
-    }
-
-    bool LoadLuaModules(lua_State* lua, std::wstring& msg)
-    {
-        return
-            //LuaRequire(lua, "RadLine", msg) ||
-            LuaRequire(lua, "UserRadLine", msg);
-    }
-
     bool isCommandSeparator(std::wstring_view s)
     {
         return s.compare(L"&") == 0
@@ -183,7 +125,7 @@ namespace {
         lua_register(L.get(), "FindAlias", l_FindAlias);
         lua_register(L.get(), "FindRegKey", l_FindRegKey);
 
-        if (!LoadLuaModules(L.get(), msg))
+        if (!LuaRequire(L.get(), "UserRadLine", msg))
             return {};
 
         assert(lua_gettop(L.get()) == 0);

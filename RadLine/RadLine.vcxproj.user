@@ -19,7 +19,7 @@
     <LocalDebuggerCommandArguments>/D /K $(TargetDir)\RLoadDll.exe - $(TargetPath)</LocalDebuggerCommandArguments>
     <LocalDebuggerWorkingDirectory>$(SolutionDir)</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerEnvironment>PATH=%PATH%;$(SolutionDir)Lua\Bin$(Platform)</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>PATH=$(SolutionDir)Lua\Bin$(Platform);%PATH%</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerCommand>cmd.exe</LocalDebuggerCommand>

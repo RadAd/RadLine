@@ -2,12 +2,8 @@
 -- Need a find reg values also
 
 local win32 = require "lrwin32"
---win32.OutputDebugString("package.path: " .. package.path .. "\n")
---win32.OutputDebugString("package.cpath: " .. package.cpath .. "\n")
-INVALID_HANDLE_VALUE = -1   --  TODO add to win32 somewhere
 
-
--- function FindEnv(s, enclose)
+-- function FindAlias(s)
 -- function FindRegKey(s)
 
 function DebugOutLn(s)
@@ -125,7 +121,7 @@ function FindFiles(s, e)
     local files = {}
     local FindFileData = {}
     local hFind = win32.FindFirstFile(s, FindFileData)
-    if hFind ~= INVALID_HANDLE_VALUE then
+    if hFind ~= win32.INVALID_HANDLE_VALUE then
         repeat
             if FindFileData.cFileName ~= "." and FindFileData.cFileName ~= ".." then
             --if FindFileData.cFileName ~= "." and FindFileData.cFileName ~= ".." and (FindFileData.dwFileAttributes & win32.FILE_ATTRIBUTE.HIDDEN) == 0 then
