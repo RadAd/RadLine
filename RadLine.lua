@@ -1,82 +1,11 @@
--- TODO
--- Need a find reg values also
-
 local win32 = require "lrwin32"
+require "Utils"
 
 -- function FindAlias(s)
 -- function FindRegKey(s)
 
 function DebugOutLn(s)
     win32.OutputDebugString(s .. "\n")
-end
-
-function split(s, sep)
-    local fields = {}
-
-    local sep = sep or " "
-    local pattern = string.format("([^%s]+)", sep)
-    s:gsub(pattern, function(c) fields[#fields + 1] = c end)
-
-    return fields
-end
-
-function concat(t, ...)
-    for i,v in ipairs({...}) do
-        for ii,vv in ipairs(v) do
-            t[#t+1] = vv
-        end
-    end
-    return t
-end
-
--- TODO can I make beginswith a parameter?
-function concat_if(t, s, ...)
-    for i,v in ipairs({...}) do
-        for ii,vv in ipairs(v) do
-            if beginswith(vv:lower(), s) then
-                t[#t+1] = vv
-            end
-        end
-    end
-    return t
-end
-
-local escape
-do
-  local matches =
-  {
-    ["^"] = "%^";
-    ["$"] = "%$";
-    ["("] = "%(";
-    [")"] = "%)";
-    ["%"] = "%%";
-    ["."] = "%.";
-    ["["] = "%[";
-    ["]"] = "%]";
-    ["*"] = "%*";
-    ["+"] = "%+";
-    ["-"] = "%-";
-    ["?"] = "%?";
-    ["\0"] = "%z";
-  }
-
-  escape = function(s)
-    return s:gsub(".", matches)
-  end
-end
-
-function beginswith(s, t)
-    -- TODO better? s:sub(1, #t) == t
-    return s:find("^"..escape(t)) ~= nil
-end
-
-function table.contains(table, element)
-  for _, value in pairs(table) do
-    if value == element then
-      return true
-    end
-  end
-  return false
 end
 
 function CaseInsensitiveLess(s1, s2)
@@ -110,7 +39,7 @@ function FindFiles(s, e)
     assert(table.contains(FindFilesE, e), "e=" .. tostring(e) .. " is not in FindFilesE")
     s = s:gsub('"', '')
 
-    if beginswith(s, "~\\") and tonumber(win32.GetEnvironmentVariable("RADLINE_TILDE") or 0) ~= 0 then
+    if s:beginswith("~\\") and tonumber(win32.GetEnvironmentVariable("RADLINE_TILDE") or 0) ~= 0 then
         s = "%USERPROFILE%" .. s:sub(2, -1)
     end
 
@@ -146,7 +75,7 @@ function FindFiles(s, e)
 end
 
 function FindExeFiles(s)
-    local pathext = split(win32.GetEnvironmentVariable("PATHEXT"), ";")
+    local pathext = win32.GetEnvironmentVariable("PATHEXT"):split(";")
     local dot = s:match'^.*()%.' -- Find last of '.'
     local slash = s:match'^.*()\\' or 0 -- Find last of '\'
     local ext = (dot and dot > slash) and s:sub(dot):upper() or nil
@@ -154,29 +83,29 @@ function FindExeFiles(s)
     local f = {}
     if not ext then
         for _,i in ipairs(pathext) do
-            concat(f, FindFiles(s.."*"..i, FindFilesE.FileOnly))
+            table.concat(f, FindFiles(s.."*"..i, FindFilesE.FileOnly))
         end
     else
         for _,i in ipairs(pathext) do
             local dot = i:match'^.*()%.' -- Find last of '.'
             local iext = (dot and dot > 1) and i:sub(dot) or nil
-            if beginswith(i:upper(), ext) then
-                concat(f, FindFiles(s..i:sub(#ext + 1), FindFilesE.FileOnly))
+            if i:upper():beginswith(ext) then
+                table.concat(f, FindFiles(s..i:sub(#ext + 1), FindFilesE.FileOnly))
             end
-            if iext and beginswith(iext:upper(), ext) then
-                concat(f, FindFiles(s..i:sub(dot + #ext), FindFilesE.FileOnly))
+            if iext and iext:upper():beginswith(ext) then
+                table.concat(f, FindFiles(s..i:sub(dot + #ext), FindFilesE.FileOnly))
             end
-            --concat(f, FindFiles(s.."*"..i, FindFilesE.FileOnly))
+            --table.concat(f, FindFiles(s.."*"..i, FindFilesE.FileOnly))
         end
     end
     return f
 end
 
 function FindPathExeFiles(s)
-    local path = split(win32.GetEnvironmentVariable("PATH"), ";")
+    local path = win32.GetEnvironmentVariable("PATH"):split(";")
     local f = {}
     for _,i in ipairs(path) do
-        concat(f, FindExeFiles(i.."\\"..s))
+        table.concat(f, FindExeFiles(i.."\\"..s))
     end
     return f
 end
@@ -187,7 +116,7 @@ function FindEnv(s, enclose)
 
     local env = win32.GetEnvironmentStrings();
     for k,v in pairs(env) do
-        if beginswith(k:upper(), s) then
+        if k:upper():beginswith(s) then
             if enclose then
                 e[#e+1] = "%"..k.."%"
             else
@@ -261,7 +190,7 @@ command_fn = {
 }
 
 function LookUpExt(t, key)
-    local pathext = split(win32.GetEnvironmentVariable("PATHEXT"), ";")
+    local pathext = win32.GetEnvironmentVariable("PATHEXT"):split(";")
     for _,i in ipairs(pathext) do
         local f = rawget(t, (key..i):lower())
         if f then
@@ -278,7 +207,7 @@ setmetatable(command_fn, {
 other_env = {
     "%CD%", "%CMDCMDLINE%", "%CMDEXTVERSION%", "%DATE%", "%ERRORLEVEL%", "%RANDOM%", "%TIME%",
     "%FIRMWARE_TYPE%", "%HighestNumaNodeNumber%",
-    "%__APPDIR__%", "%__CD__%", "%__PID__%", "%__TICK__%", "%RAWPROMPT%", "%RADLINE_LOADED%", "%RADLINE_DIR%",
+    "%__APPDIR__%", "%__CD__%", "%__PID__%", "%__TICK__%", "%__USERCD__%", "%RADLINE_LOADED%", "%RADLINE_DIR%",
     "%=ExitCode%", "%=ExitCodeAscii%", "%=C:%", "%=D:%", "%=E:%", "%=F:%"
 }
 
@@ -298,20 +227,20 @@ function FindPotential(params, p)
 
     if e then
         local f = {}
-        concat(f, FindEnv(s:sub(e + 1), true))
-        concat_if(f, s:sub(e):lower(), other_env)
+        table.concat(f, FindEnv(s:sub(e + 1), true))
+        table.concat_if(f, s:sub(e):lower(), other_env)
         return f, (e + i - 1)
     elseif p == 1 or command_sep[params[p - 1]] then
         local f = {}
         if i == 1 then
-            concat_if(f, s:lower(), internal)
-            concat(f, FindFiles(s.."*", FindFilesE.DirOnly))
-            concat(f, FindExeFiles(s))
-            concat(f, FindPathExeFiles(s))
-            concat(f, FindAlias(s))
+            table.concat_if(f, s:lower(), internal)
+            table.concat(f, FindFiles(s.."*", FindFilesE.DirOnly))
+            table.concat(f, FindExeFiles(s))
+            table.concat(f, FindPathExeFiles(s))
+            table.concat(f, FindAlias(s))
         else
-            concat(f, FindFiles(s.."*", FindFilesE.DirOnly))
-            concat(f, FindExeFiles(s))
+            table.concat(f, FindFiles(s.."*", FindFilesE.DirOnly))
+            table.concat(f, FindExeFiles(s))
         end
         return f, i
     elseif p > 1 and redirect_sep[params[p - 1]] then
@@ -320,6 +249,6 @@ function FindPotential(params, p)
         local command = params[1]
         -- TODO Unquote and remove path ???
         local fn = command_fn[command]
-        return fn(params, p), i
+        return fn(params, p)
     end
 end

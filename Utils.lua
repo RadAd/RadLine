@@ -1,3 +1,15 @@
+function want(name)
+    local out;
+    if xpcall(
+        function()  out = require(name) end,
+        function(e) out = e end)
+    then
+        return out          -- success
+    else
+        return nil, out     -- error
+    end
+end
+
 function string.split(s, sep)
     local fields = {}
 

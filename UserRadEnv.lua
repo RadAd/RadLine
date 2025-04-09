@@ -29,7 +29,6 @@ function GetEnvironmentVariable(name)
         local o = poutput(name:sub(2, -2))
         o = o:gsub('[\r\n]$', '')
         o = o:gsub('[\r\n]', ';')
-        print(o)
         return o
     else
         local nameu = name:upper()

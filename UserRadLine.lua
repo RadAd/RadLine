@@ -1,5 +1,20 @@
 require "RadLine"
 
+cmds = {}
+setmetatable(cmds, {
+    __index = LookUpExt
+})
+
+cmd_output = {}
+setmetatable(cmd_output, {
+    __index = LookUpExt
+})
+
+options = {}
+setmetatable(options, {
+    __index = LookUpExt
+})
+
 function FindPotentialEnv(params, p)
     local s,i = GetParam(params, p)
     if p == 2 then
@@ -8,29 +23,6 @@ function FindPotentialEnv(params, p)
         return FindPotentialDefault(params, p)
     end
 end
-
-command_fn["set"] = FindPotentialEnv
-command_fn["p"] = FindPotentialEnv
-
-reg_cmds = {
-    "query", "add", "delete", "copy", "save", "load",
-    "unload", "restore", "compare", "export", "import", "flags"
-}
-
-function FindPotentialReg(params, p)
-    local s,i = GetParam(params, p)
-    if p == 2 and i == 1 then
-        local f = {}
-        concat_if(f, s:lower(), reg_cmds)
-        return f, i
-    elseif p == 3 then
-        return FindRegKey(s), i
-    else
-        return FindPotentialDefault(params, p)
-    end
-end
-
-command_fn["reg.exe"] = FindPotentialReg
 
 function FindPotentialAlias(params, p)
     local s,i = GetParam(params, p)
@@ -42,16 +34,13 @@ function FindPotentialAlias(params, p)
     end
 end
 
-command_fn["alias.bat"] = FindPotentialAlias
-
-where_options = { "/R", "/Q", "/F", "/T" }
-
 function FindPotentialWhere(params, p)
     local s,i = GetParam(params, p)
     if s:sub(1, 1) == "/" then
+        local command = params[1]
         local f = {}
-        concat_if(f, s:upper(), where_options)
-        return f, i
+        table.concat_if(f, s:lower(), options[command])
+        return f
     elseif p > 1 and params[p - 1] == "/R" then
         return FindFiles(s.."*", FindFilesE.DirOnly), i
     else
@@ -60,74 +49,61 @@ function FindPotentialWhere(params, p)
 end
 
 command_fn["where.exe"] = FindPotentialWhere
+options["where.exe"] = { "/r", "/q", "/f", "/t" }
 
 function FindPotentialExe(params, p)
     local s,i = GetParam(params, p)
     if s:sub(1, 1) == "/" then
+        local command = params[1]
         local f = {}
-        -- concat_if(f, s:upper(), where_options)
-        return f, i
+        table.concat_if(f, s:lower(), options[command])
+        return f
     elseif p == 2 then
         local f = {}
-        concat_if(f, s:lower(), internal)
-        concat(f, FindFiles(s.."*", FindFilesE.DirOnly))
-        concat(f, FindExeFiles(s))
-        concat(f, FindPathExeFiles(s))
+        table.concat_if(f, s:lower(), internal)
+        table.concat(f, FindFiles(s.."*", FindFilesE.DirOnly))
+        table.concat(f, FindExeFiles(s))
+        table.concat(f, FindPathExeFiles(s))
         return f, i
     else
         return FindFiles(s.."*", FindFilesE.All), i
     end
 end
 
-command_fn["!"] = FindPotentialExe
-command_fn["start"] = FindPotentialExe
-command_fn["gsudo.exe"] = FindPotentialExe
-
-regsvr32_options = { "/u", "/s", "/i", "/n" }
-
 function FindPotentialRegsvr32(params, p)
     local s,i = GetParam(params, p)
     if s:sub(1, 1) == "/" then
+        local command = params[1]
         local f = {}
-        concat_if(f, s:lower(), regsvr32_options)
-        return f, i
+        table.concat_if(f, s:lower(), options[command])
+        DebugOutLn("f "..#f)
+        return f
     else
         return FindFiles(s.."*.dll", FindFilesE.FileOnly), i
     end
 end
 
 command_fn["regsvr32.exe"] = FindPotentialRegsvr32
-
-cmd_output = {}
-
-setmetatable(cmd_output, {
-    __index = LookUpExt
-})
+options["regsvr32.exe"] = { "/u", "/s", "/i", "/n" }
 
 function FindPotentialCmdOutput(params, p)
     local s,i = GetParam(params, p)
     if p == 2 then
         local command = params[1]
         local f = {}
-        concat_if(f, s:lower(), GetCmdOutput(cmd_output[command]))
+        table.concat_if(f, s:lower(), GetCmdOutput(cmd_output[command]))
         return f
     else
         return FindFiles(s.."*", FindFilesE.All), i
     end
 end
 
-cmds = {}
-
-setmetatable(cmds, {
-    __index = LookUpExt
-})
-
 function FindPotentialCmds(params, p)
     local s,i = GetParam(params, p)
     if p == 2 then
         local command = params[1]
         local f = {}
-        concat_if(f, s:lower(), cmds[command])
+        table.concat_if(f, s:lower(), cmds[command])
         return f
     else
         return {}
@@ -139,7 +115,7 @@ function FindPotentialCmdsOrFile(params, p)
     if p == 2 then -- TODO skip over options
         local command = params[1]
         local f = {}
-        concat_if(f, s:lower(), cmds[command])
+        table.concat_if(f, s:lower(), cmds[command])
         return f
     else
         return FindFiles(s.."*", FindFilesE.All), i
@@ -151,12 +127,16 @@ function FindPotentialCmdsOrDir(params, p)
     if p == 2 then -- TODO skip over options
         local command = params[1]
         local f = {}
-        concat_if(f, s:lower(), cmds[command])
+        table.concat_if(f, s:lower(), cmds[command])
         return f
     else
         return FindFiles(s.."*", FindFilesE.DirOnly), i
     end
 end
+
+command_fn["set"] = FindPotentialEnv
+
+command_fn["start"] = FindPotentialExe
 
 command_fn["ping.exe"] = FindPotentialCmds
 cmds["ping.exe"] = { "www.google.com" }
@@ -180,3 +160,25 @@ cmds["git.exe"] = {
     "clone", "init", "add", "mv", "reset", "rm", "bisect", "grep", "log", "show", "status",
     "branch", "checkout", "commit", "diff", "merge", "rebase", "tag", "fetch", "pull", "push", "help"
 };
+
+function FindPotentialReg(params, p)
+    local s,i = GetParam(params, p)
+    if p == 2 and i == 1 then
+        local command = params[1]
+        local f = {}
+        table.concat_if(f, s:lower(), cmds[command])
+        return f, i
+    elseif p == 3 then
+        return FindRegKey(s), i
+    else
+        return FindPotentialDefault(params, p)
+    end
+end
+
+command_fn["reg.exe"] = FindPotentialReg
+cmds["reg.exe"] = {
+    "query", "add", "delete", "copy", "save", "load",
+    "unload", "restore", "compare", "export", "import", "flags"
+}
+
+want "UserRadLine2"
