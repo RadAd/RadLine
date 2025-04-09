@@ -20,11 +20,12 @@ BOOL APIENTRY DllMain(HMODULE hModule,
     {
         LPCTSTR strModule;
         LPCSTR strFunction;
+        LPVOID pTarget;
         LPVOID pDetour;
         LPVOID* ppOriginal;
     } hooks[] = {
-        { TEXT("KernelBase.dll"),   "ReadConsoleW",             RadLineReadConsoleW,        (LPVOID*) &pOrigReadConsoleW },
-        { TEXT("KernelBase.dll"),   "GetEnvironmentVariableW",  RadGetEnvironmentVariableW, (LPVOID*) &pOrigGetEnvironmentVariableW },
+        { TEXT("KernelBase.dll"),   "ReadConsoleW",             ReadConsoleW,               RadLineReadConsoleW,        (LPVOID*) &pOrigReadConsoleW },
+        { TEXT("KernelBase.dll"),   "GetEnvironmentVariableW",  GetEnvironmentVariableW,    RadGetEnvironmentVariableW, (LPVOID*) &pOrigGetEnvironmentVariableW },
     };
 
     switch (ul_reason_for_call)
@@ -39,18 +40,24 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 
             for (const HookSpec& hs : hooks)
             {
+#if 1
                 const HMODULE h = GetModuleHandle(hs.strModule);
                 DebugOut(TEXT("RadLine %s 0x%x\n"), hs.strModule, HandleToULong(h));
                 if (h == NULL)
                     continue;
                 const FARPROC pTarget = GetProcAddress(h, hs.strFunction);
+                DebugOut(TEXT("RadLine GetProcAddress %S 0x%0p\n"), hs.strFunction, pTarget);
+#else
+                const LPVOID pTarget = hs.pTarget;
+#endif
                 if (pTarget == nullptr)
                     continue;
-                DebugOut(TEXT("RadLine GetProcAddress %S 0x%0p\n"), hs.strFunction, pTarget);
                 status = MH_CreateHook(pTarget, hs.pDetour, hs.ppOriginal);
                 DebugOut(TEXT("RadLine MH_CreateHook %S %d 0x%0p 0x%0p\n"), hs.strFunction, status, hs.pDetour, *hs.ppOriginal);
                 status = MH_EnableHook(pTarget);
                 DebugOut(TEXT("RadLine MH_EnableHook %S %d\n"), hs.strFunction, status);
+                //status = MH_EnableHook(hs.pTarget);
+                //DebugOut(TEXT("RadLine MH_EnableHook %S %d\n"), hs.strFunction, status);
             }
 
             HANDLE hThread = CreateThread(nullptr, 0, PipeThread, nullptr, 0, nullptr);
