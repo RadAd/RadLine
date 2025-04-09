@@ -67,12 +67,15 @@ function FindPotentialExe(params, p)
         local f = {}
         -- concat_if(f, s:upper(), where_options)
         return f, i
-    else
+    elseif p == 2 then
         local f = {}
+        concat_if(f, s:lower(), internal)
         concat(f, FindFiles(s.."*", FindFilesE.DirOnly))
         concat(f, FindExeFiles(s))
         concat(f, FindPathExeFiles(s))
         return f, i
+    else
+        return FindFiles(s.."*", FindFilesE.All), i
     end
 end
 
@@ -143,8 +146,20 @@ function FindPotentialCmdsOrFile(params, p)
     end
 end
 
+function FindPotentialCmdsOrDir(params, p)
+    local s,i = GetParam(params, p)
+    if p == 2 then -- TODO skip over options
+        local command = params[1]
+        local f = {}
+        concat_if(f, s:lower(), cmds[command])
+        return f
+    else
+        return FindFiles(s.."*", FindFilesE.DirOnly), i
+    end
+end
+
 command_fn["ping.exe"] = FindPotentialCmds
-cmds["ping.exe"] = { "www.google.com", "radad.boxathome.net" }
+cmds["ping.exe"] = { "www.google.com" }
 
 command_fn["scoop.cmd"] = FindPotentialCmdsOrFile
 cmds["scoop.cmd"] = {

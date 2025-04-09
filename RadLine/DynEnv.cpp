@@ -1,3 +1,5 @@
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <Windows.h>
 #include <stdio.h>
 #include <wchar.h>
@@ -12,7 +14,7 @@ extern HMODULE g_hModule;
 #include "WinHelpers.h"
 #include "LuaUtils.h"
 #include "LuaHelpers.h"
-#include "Debug.h"
+//#include "Debug.h"
 
 extern "C" {
     FuncGetEnvironmentVariableW pOrigGetEnvironmentVariableW = nullptr;
@@ -102,7 +104,13 @@ extern "C" {
         }
         assert(!L || lua_gettop(L.get()) == 0);
         if (!msg.empty())
-            DebugOut(TEXT("Error loading UserRadEnv: %s\n"), msg.c_str());
+        {
+            msg = TEXT("Error loading UserRadEnv: ") + msg + TEXT("\n");
+            //OutputDebugString(msg.c_str());
+            const HANDLE hConsoleOutput = GetStdHandle(STD_ERROR_HANDLE);
+            DWORD written = 0;
+            WriteConsole(hConsoleOutput, msg.c_str(), (DWORD) msg.length(), &written, nullptr);
+        }
 
         DWORD ret = 0;
         const size_t len = lpName != nullptr ? wcslen(lpName) : 0;
@@ -110,6 +118,7 @@ extern "C" {
         if (lpBuffer == nullptr || lpName == nullptr)
             // TODO Handle the case when lpBuffer == nullptr
             ret = pOrigGetEnvironmentVariableW(lpName, lpBuffer, nSize);
+#if 0
         else if (lpName[0] == L'(' && lpName[len - 1] == L')')
         {
             WCHAR strCmdLine[2048];
@@ -165,6 +174,7 @@ extern "C" {
                 ret = ExpandEnvironmentStrings(lpBuffer, nSize);
             }
         }
+#endif
         else if (_wcsicmp(lpName, L"RADLINE_LOADED") == 0)
         {
             wcscpy_s(lpBuffer, nSize, L"1");
@@ -188,12 +198,10 @@ extern "C" {
             DWORD tick = GetTickCount();
             ret = wsprintf(lpBuffer, L"%d", tick);
         }
-#endif
         else if (_wcsicmp(lpName, L"USERCD") == 0)
         {
             ret = GetUserCurrentDirectory(lpBuffer, nSize);
         }
-#if 0
         else if (_wcsicmp(lpName, L"RAWPROMPT") == 0)
         {
             ret = pOrigGetEnvironmentVariableW(L"PROMPT", lpBuffer, nSize);
@@ -212,8 +220,11 @@ extern "C" {
                 LuaPush(L.get(), lpName);
                 lua_pcall(L.get(), 1, 1, 0) != LUA_OK)
             {
-                msg = LuaPopString(L.get());
-                DebugOut(TEXT("Error calling GetEnvironmentVariable: %s\n"), msg.c_str());
+                msg = TEXT("Error calling GetEnvironmentVariable: ") + LuaPopString(L.get()) + TEXT("\n");
+                //OutputDebugString(msg.c_str());
+                const HANDLE hConsoleOutput = GetStdHandle(STD_ERROR_HANDLE);
+                DWORD written = 0;
+                WriteConsole(hConsoleOutput, msg.c_str(), (DWORD) msg.length(), &written, nullptr);
 
                 ret = pOrigGetEnvironmentVariableW(lpName, lpBuffer, nSize);
             }
@@ -221,7 +232,7 @@ extern "C" {
             {
                 const std::wstring result = LuaPopString(L.get());
                 wcscpy_s(lpBuffer, nSize, result.c_str());
-                ret = (DWORD) result.size();
+                ret = std::min((DWORD) result.size(), nSize);
             }
 
 #if 0

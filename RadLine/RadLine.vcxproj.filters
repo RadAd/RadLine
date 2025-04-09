@@ -40,5 +40,8 @@
     <CopyFileToFolders Include="..\UserRadEnv.lua">
       <Filter>Scripts</Filter>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="..\Utils.lua">
+      <Filter>Scripts</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>
