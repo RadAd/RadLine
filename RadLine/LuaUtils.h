@@ -8,6 +8,7 @@ extern "C"
 }
 
 //#include <assert.h>
+#include <Shlwapi.h>
 #include "StringUtils.h"
 #include "WinHelpers.h"
 
@@ -110,7 +111,7 @@ inline std::wstring LuaGetModuleFileName(lua_State* lua, std::wstring_view modul
     {
         std::wstring strFile(p);
         Replace(strFile, L"?", module);
-        if (FileExists(strFile.c_str()))
+        if (PathFileExists(strFile.c_str()))
             return strFile;
     }
 

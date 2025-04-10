@@ -71,6 +71,7 @@ namespace
         return dwReadTotal;
     }
 
+#if 0
     DWORD GetUserCurrentDirectory(_Out_writes_to_(nSize, return +1) LPWSTR lpBuffer, _In_ DWORD nSize)
     {
         wchar_t UserProfile[MAX_PATH] = L"";
@@ -84,6 +85,7 @@ namespace
         }
         return ret;
     }
+#endif
 }
 
 extern "C" {
@@ -104,13 +106,7 @@ extern "C" {
         }
         assert(!L || lua_gettop(L.get()) == 0);
         if (!msg.empty())
-        {
-            msg = TEXT("Error loading UserRadEnv: ") + msg + TEXT("\n");
-            //OutputDebugString(msg.c_str());
-            const HANDLE hConsoleOutput = GetStdHandle(STD_ERROR_HANDLE);
-            DWORD written = 0;
-            WriteConsole(hConsoleOutput, msg.c_str(), (DWORD) msg.length(), &written, nullptr);
-        }
+            EasyWriteFormat(GetStdHandle(STD_ERROR_HANDLE), TEXT("Error loading UserRadEnv: %s\n"), msg.c_str());
 
         DWORD ret = 0;
         const size_t len = lpName != nullptr ? wcslen(lpName) : 0;
@@ -220,12 +216,7 @@ extern "C" {
                 LuaPush(L.get(), lpName);
                 lua_pcall(L.get(), 1, 1, 0) != LUA_OK)
             {
-                msg = TEXT("Error calling GetEnvironmentVariable: ") + LuaPopString(L.get()) + TEXT("\n");
-                //OutputDebugString(msg.c_str());
-                const HANDLE hConsoleOutput = GetStdHandle(STD_ERROR_HANDLE);
-                DWORD written = 0;
-                WriteConsole(hConsoleOutput, msg.c_str(), (DWORD) msg.length(), &written, nullptr);
-
+                EasyWriteFormat(GetStdHandle(STD_ERROR_HANDLE), TEXT("Error calling GetEnvironmentVariable: %s\n"), LuaPopString(L.get()).c_str());
                 ret = pOrigGetEnvironmentVariableW(lpName, lpBuffer, nSize);
             }
             else

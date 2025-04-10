@@ -415,6 +415,7 @@ void CleanUpExtra(const HANDLE hConsoleOutput, Extra* extra)
     }
 }
 
+#if 0
 void ExpandAlias(bufstring& line)
 {
     std::vector<bufstring_view> params = findParam(line);
@@ -486,3 +487,4 @@ void ExpandAlias(bufstring& line)
         line.replace(pb->begin, pe->length(), ae);
     }
 }
+#endif

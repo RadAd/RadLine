@@ -6,22 +6,6 @@
 #include <string>
 #include <Windows.h>
 
-inline BOOL FileExists(LPCSTR szPath)
-{
-    DWORD dwAttrib = GetFileAttributesA(szPath);
-
-    return (dwAttrib != INVALID_FILE_ATTRIBUTES &&
-        !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
-}
-
-inline BOOL FileExists(LPCWSTR szPath)
-{
-    DWORD dwAttrib = GetFileAttributesW(szPath);
-
-    return (dwAttrib != INVALID_FILE_ATTRIBUTES &&
-        !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
-}
-
 template <size_t size>
 inline DWORD GetCurrentDirectoryA(CHAR(&rBuffer)[size])
 {
