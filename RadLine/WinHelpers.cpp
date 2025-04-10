@@ -12,6 +12,7 @@ namespace {
     }
 };
 
+#if 0
 std::vector<std::wstring> findAlias(const std::wstring& s)
 {
     std::vector<std::wstring> list;
@@ -27,6 +28,7 @@ std::vector<std::wstring> findAlias(const std::wstring& s)
     }
     return list;
 }
+#endif
 
 std::wstring getAlias(const std::wstring& s)
 {

@@ -100,6 +100,7 @@ namespace {
         }
     }
 
+#if 0
     int l_FindAlias(lua_State* lua)
     {
         std::wstring s = From_utf8(luaL_checklstring(lua, -1, nullptr));
@@ -107,6 +108,7 @@ namespace {
         LuaPush(lua, f);
         return 1;  /* number of results */
     }
+#endif
 
     int l_FindRegKey(lua_State* lua)
     {
@@ -122,7 +124,7 @@ namespace {
         luaL_openlibs(L.get());
         SetLuaPath(L.get());
 
-        lua_register(L.get(), "FindAlias", l_FindAlias);
+        //lua_register(L.get(), "FindAlias", l_FindAlias);
         lua_register(L.get(), "FindRegKey", l_FindRegKey);
 
         if (!LuaRequire(L.get(), "UserRadLine", msg))

@@ -1,7 +1,6 @@
 local win32 = require "lrwin32"
 require "Utils"
 
--- function FindAlias(s)
 -- function FindRegKey(s)
 
 function DebugOutLn(s)
@@ -138,6 +137,18 @@ function FindEnvBegin(s)
     else
         return nil
     end
+end
+
+function FindAlias(s)
+    s = s:lower()
+    local a = {}
+    local aliases = win32.GetConsoleAliases("cmd.exe")
+    for k,v in pairs(aliases) do
+        if k:lower():beginswith(s) then
+            a[#a+1] = k
+        end
+    end
+    return a;
 end
 
 command_sep = {
