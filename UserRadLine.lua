@@ -1,63 +1,10 @@
 require "RadLine"
 
-cmds = {}
-setmetatable(cmds, {
-    __index = LookUpExt
-})
+command_fn["set"] = FindPotentialDefault
+command_command["set"] = FindPotentialEnv
 
-cmd_output = {}
-setmetatable(cmd_output, {
-    __index = LookUpExt
-})
-
-function FindPotentialAlias(params, p)
-    local s,i = GetParam(params, p)
-    if p == 2 then
-        return FindAlias(s), i
-    else
-        -- TODO This should really start the command again and recall FindPotentital
-        return FindFiles(s.."*", FindFilesE.All), i
-    end
-end
-
-function FindPotentialCmdOutput(params, p)
-    local s,i = GetParam(params, p)
-    if p == 2 then
-        local command = params[1]
-        local f = {}
-        table.concat_if(f, s:lower(), GetCmdOutput(cmd_output[command]))
-        return f
-    else
-        return FindFiles(s.."*", FindFilesE.All), i
-    end
-end
-
-function FindPotentialEnv(params, p)
-    local s,i = GetParam(params, p)
-    if p == 2 then
-        return FindEnv(s, false), i
-    else
-        return FindPotentialDefault(params, p)
-    end
-end
-
-command_fn["set"] = FindPotentialEnv
-
-function FindPotentialExe(params, p)
-    local s,i = GetParam(params, p)
-    if p == 2 then
-        local f = {}
-        table.concat_if(f, s:lower(), internal)
-        table.concat(f, FindFiles(s.."*", FindFilesE.DirOnly))
-        table.concat(f, FindExeFiles(s))
-        table.concat(f, FindPathExeFiles(s))
-        return f, i
-    else
-        return FindFiles(s.."*", FindFilesE.All), i
-    end
-end
-
-command_fn["start"] = FindPotentialExe
+command_fn["start"] = FindPotentialDefault
+command_command["start"] = FindPotentialExe
 
 function FindPotentialWhere(params, p)
     local s,i = GetParam(params, p)

@@ -175,6 +175,16 @@ function FindPotentialDefault(params, p)
     return FindFiles(s.."*", FindFilesE.All), i
 end
 
+function FindPotentialExe(params, p)    -- checks path, no alias
+    local s,i = GetParam(params, p)
+    local f = {}
+    table.concat_if(f, s:lower(), internal)
+    table.concat(f, FindFiles(s.."*", FindFilesE.DirOnly))
+    table.concat(f, FindExeFiles(s))
+    table.concat(f, FindPathExeFiles(s))
+    return f, i
+end
+
 function FindPotentialDirs(params, p)
     local s,i = GetParam(params, p)
     return FindFiles(s.."*", FindFilesE.DirOnly), i
@@ -183,6 +193,16 @@ end
 function FindPotentialDlls(params, p)
     local s,i = GetParam(params, p)
     return FindFiles(s.."*.dll", FindFilesE.FileOnly), i
+end
+
+function FindPotentialAlias(params, p)
+    local s,i = GetParam(params, p)
+    return FindAlias(s)
+end
+
+function FindPotentialEnv(params, p)
+    local s,i = GetParam(params, p)
+    return FindEnv(s, false)
 end
 
 function LookUpExt(t, key)
@@ -225,6 +245,16 @@ function GetCmdOutput(cmd)
     return d
 end
 
+command_output = setmetatable({}, { __index = LookUpExt })
+
+function FindPotentialCmdOutput(params, p)
+    local s,i = GetParam(params, p)
+    local command = params[1]
+    local f = {}
+    table.concat_if(f, s:lower(), GetCmdOutput(command_output[command]))
+    return f
+end
+
 function FindPotential(params, p)
     local s,i = GetParam(params, p)
     local e = FindEnvBegin(s)
@@ -257,9 +287,13 @@ function FindPotential(params, p)
             table.concat_if(f, s:lower(), command_options[command])
             return f
         elseif p == 2 and cmd then
-            local f = {}
-            table.concat_if(f, s:lower(), cmd)
-            return f
+            if type(cmd) == "function" then
+                return cmd(params, p)
+            else
+                local f = {}
+                table.concat_if(f, s:lower(), cmd)
+                return f
+            end
         else
             -- TODO Unquote and remove path ???
             local fn = command_fn[command]
