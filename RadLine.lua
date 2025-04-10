@@ -206,6 +206,7 @@ command_fn = setmetatable({
 }, { __index = LookUpExt })
 
 command_options = setmetatable({}, { __index = LookUpExt })
+command_command = setmetatable({}, { __index = LookUpExt }) -- first command line argument
 
 other_env = {
     "%CD%", "%CMDCMDLINE%", "%CMDEXTVERSION%", "%DATE%", "%ERRORLEVEL%", "%RANDOM%", "%TIME%",
@@ -250,9 +251,14 @@ function FindPotential(params, p)
         return FindFiles(s.."*", FindFilesE.All), i
     else
         local command = params[1]
-        if s:sub(1, 1) == "/" then
+        local cmd = command_command[command]
+        if s:sub(1, 1) == "/" or s:sub(1, 1) == "-" then
             local f = {}
             table.concat_if(f, s:lower(), command_options[command])
+            return f
+        elseif p == 2 and cmd then
+            local f = {}
+            table.concat_if(f, s:lower(), cmd)
             return f
         else
             -- TODO Unquote and remove path ???
