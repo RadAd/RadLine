@@ -45,7 +45,7 @@ void SetLuaPath(lua_State* lua)
     }
 
     {
-        HMODULE hLua = GetModuleHandle(L"lua.dll");
+        HMODULE hLua = GetModuleHandle(L"lua54.dll");
         char strPath[MAX_PATH];
         DWORD len = GetModuleFileNameA(hLua, strPath, ARRAYSIZE(strPath));
         char* strFilename = PathFindFileNameA(strPath);
