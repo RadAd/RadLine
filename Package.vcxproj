@@ -12,7 +12,10 @@
       SourceFiles="$(BuildDir)RLoadDll.exe"
       DestinationFolder="$(PackageDir)" />
     <Copy
-      SourceFiles="$(SolutionDir)Lua\Bin$(Platform)\Lua.dll"
+      SourceFiles="$(SolutionDir)Lua\Bin$(Platform)\Lua54.dll"
+      DestinationFolder="$(PackageDir)" />
+    <Copy
+      SourceFiles="$(SolutionDir)Lua\Bin$(Platform)\lrwin32.dll"
       DestinationFolder="$(PackageDir)" />
     <ZipDirectory
       Overwrite="true"
