@@ -110,6 +110,7 @@ namespace {
     }
 #endif
 
+#if 0
     int l_FindRegKey(lua_State* lua)
     {
         std::wstring s = From_utf8(luaL_checklstring(lua, -1, nullptr));
@@ -117,6 +118,7 @@ namespace {
         LuaPush(lua, f);
         return 1;  /* number of results */
     }
+#endif
 
     std::vector<std::wstring> findPotential(const bufstring& line, const std::vector<bufstring_view>& params, std::vector<bufstring_view>::const_iterator p, size_t len, std::size_t* i, std::wstring& msg)
     {
@@ -125,7 +127,7 @@ namespace {
         SetLuaPath(L.get());
 
         //lua_register(L.get(), "FindAlias", l_FindAlias);
-        lua_register(L.get(), "FindRegKey", l_FindRegKey);
+        //lua_register(L.get(), "FindRegKey", l_FindRegKey);
 
         if (!LuaRequire(L.get(), "UserRadLine", msg))
             return {};

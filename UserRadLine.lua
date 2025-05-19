@@ -1,9 +1,7 @@
 require "RadLine"
 
-command_fn["set"] = FindPotentialDefault
 command_command["set"] = FindPotentialEnv
 
-command_fn["start"] = FindPotentialDefault
 command_command["start"] = FindPotentialExe
 
 function FindPotentialWhere(params, p)
@@ -21,7 +19,6 @@ command_options["where.exe"] = { "/r", "/q", "/f", "/t" }
 command_fn["regsvr32.exe"] = FindPotentialDlls
 command_options["regsvr32.exe"] = { "/u", "/s", "/i", "/n" }
 
-command_command["ping.exe"] = FindPotentialDefault
 command_command["ping.exe"] = { "www.google.com" }
 
 function FindPotentialReg(params, p)
@@ -39,7 +36,6 @@ command_command["reg.exe"] = {
     "unload", "restore", "compare", "export", "import", "flags"
 }
 
-command_fn["winget.exe"] = FindPotentialDefault
 command_command["winget.exe"] = {
     "install", "show", "source", "search", "list",
     "upgrade", "uninstall", "hash", "validate", "settings",
@@ -50,13 +46,11 @@ command_options["winget.exe"] = {
     "--verbose", "--verbose-logs"
 }
 
-command_fn["git.exe"] = FindPotentialDefault
 command_command["git.exe"] = {
     "clone", "init", "add", "mv", "reset", "rm", "bisect", "grep", "log", "show", "status",
     "branch", "checkout", "commit", "diff", "merge", "rebase", "tag", "fetch", "pull", "push", "help"
 };
 
-command_fn["scoop.cmd"] = FindPotentialDefault
 command_command["scoop.cmd"] = {
     "alias", "bucket", "cache", "checkup", "cleanup", "config", "create", "depends", "export", "help",
     "hold", "home", "info", "install", "list", "prefix", "reset", "search", "status", "unhold",

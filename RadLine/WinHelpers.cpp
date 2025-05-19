@@ -1,5 +1,6 @@
 #include "WinHelpers.h"
 
+#if 0
 namespace {
     inline bool Match(const std::wstring& s, const wchar_t* p, size_t len)
     {
@@ -11,6 +12,7 @@ namespace {
         return Match(s, p, wcslen(p));
     }
 };
+#endif
 
 #if 0
 std::vector<std::wstring> findAlias(const std::wstring& s)
@@ -30,13 +32,16 @@ std::vector<std::wstring> findAlias(const std::wstring& s)
 }
 #endif
 
+#if 0
 std::wstring getAlias(const std::wstring& s)
 {
     wchar_t buf[1024] = L"";
     GetConsoleAliasW((LPWSTR) s.c_str(), buf, ARRAYSIZE(buf), L"cmd.exe");  // TODO Use this exe
     return buf;
 }
+#endif
 
+#if 0
 std::vector<std::wstring> findRegKey(const std::wstring& s)
 {
     HKEY hParentKey = NULL;
@@ -101,3 +106,4 @@ std::vector<std::wstring> findRegKey(const std::wstring& s)
     }
     return ret;
 }
+#endif

@@ -151,6 +151,84 @@ function FindAlias(s)
     return a;
 end
 
+function RegEnumKeyEx(k)
+	local l = {}
+	if k then
+		local i = 0
+		local n = win32.RegEnumKeyEx(k, i)
+		while n do
+			table.insert(l, n)
+			i = i + 1
+			n = win32.RegEnumKeyEx(k, i)
+		end
+	end
+	return l
+end
+
+local reg_root_keys = {
+	HKCU = win32.HKEY.CURRENT_USER,
+	HKCR = win32.HKEY.CLASSES_ROOT,
+	HKLM = win32.HKEY.LOCAL_MACHINE,
+	HKCC = win32.HKEY.CURRENT_CONFIG,
+	HKU = win32.HKEY.USERS,
+	HKEY_CURRENT_USER = win32.HKEY.CURRENT_USER,
+	HKEY_CLASSES_ROOT = win32.HKEY.CLASSES_ROOT,
+	HKEY_LOCAL_MACHINE = win32.HKEY.LOCAL_MACHINE,
+	HKEY_CURRENT_CONFIG = win32.HKEY.CURRENT_CONFIG,
+	HKEY_USERS = win32.HKEY.USERS,
+}
+
+function findlast(s)
+    local i = s:reverse():find("\\", 1, true)   -- TODO Can this be better?
+    if i then
+        i = #s - i + 1
+    end
+    return i
+end
+
+function FindRegKey(s)
+    local i = findlast(s)
+    local p
+    if i then
+        p = s:sub(i + 1)
+        p = p:lower()
+        s = s:sub(1, i - 1)
+	else
+        p = s:upper()
+        s = nil
+	end
+
+    local r = {}
+	if s then
+        local k
+        i = s:find("\\", 1, true)
+        if i then
+            local ks = s:sub(1, i - 1):upper()
+            k = win32.RegOpenKey(reg_root_keys[ks], s:sub(i + 1))
+        else
+            k = reg_root_keys[s:upper()]
+        end
+
+        if k then
+            local c = RegEnumKeyEx(k)
+            for i,v in ipairs(c) do
+                if v:lower():beginswith(p) then
+                    r[#r+1] = v.."\\"
+                end
+            end
+            win32.RegCloseKey(k)
+        end
+	else
+        for k,v in pairs(reg_root_keys) do
+            if k:beginswith(p) then
+                r[#r+1] = k.."\\"
+            end
+        end
+	end
+
+    return r
+end
+
 command_sep = {
     ["&"] = true;
     ["|"] = true;

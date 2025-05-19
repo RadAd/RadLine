@@ -135,5 +135,5 @@ inline void EasyWriteFormat(const HANDLE hStdOutput, LPCWCHAR format, ...)
 }
 
 //std::vector<std::wstring> findAlias(const std::wstring& s);
-std::wstring getAlias(const std::wstring& s);
-std::vector<std::wstring> findRegKey(const std::wstring& s);
+//std::wstring getAlias(const std::wstring& s);
+//std::vector<std::wstring> findRegKey(const std::wstring& s);
