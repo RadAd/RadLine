@@ -222,8 +222,8 @@ extern "C" {
             else
             {
                 const std::wstring result = LuaPopString(L.get());
-                wcscpy_s(lpBuffer, nSize, result.c_str());
-                ret = std::min((DWORD) result.size(), nSize);
+                wcsncpy_s(lpBuffer, nSize, result.c_str(), _TRUNCATE);
+                ret = std::min((DWORD) result.size(), nSize - 1);
             }
 
 #if 0
