@@ -4,7 +4,7 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="WinHelpers.cpp" />
     <ClCompile Include="Completion.cpp" />
-    <ClCompile Include="RadReadConsole.cpp" />
+    <ClCompile Include="RadLineReadConsole.cpp" />
     <ClCompile Include="Debug.cpp" />
     <ClCompile Include="DynEnv.cpp" />
     <ClCompile Include="PipeThread.cpp" />
@@ -15,7 +15,7 @@
     <ClInclude Include="bufstring.h" />
     <ClInclude Include="Completion.h" />
     <ClInclude Include="Debug.h" />
-    <ClInclude Include="RadReadConsole.h" />
+    <ClInclude Include="RadLineReadConsole.h" />
     <ClInclude Include="LuaUtils.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="DynEnv.h" />

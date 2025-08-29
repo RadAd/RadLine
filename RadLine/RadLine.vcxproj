@@ -193,7 +193,7 @@
     <ClCompile Include="DynEnv.cpp" />
     <ClCompile Include="LuaHelpers.cpp" />
     <ClCompile Include="PipeThread.cpp" />
-    <ClCompile Include="RadReadConsole.cpp" />
+    <ClCompile Include="RadLineReadConsole.cpp" />
     <ClCompile Include="WinHelpers.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -203,7 +203,7 @@
     <ClInclude Include="DynEnv.h" />
     <ClInclude Include="LuaHelpers.h" />
     <ClInclude Include="LuaUtils.h" />
-    <ClInclude Include="RadReadConsole.h" />
+    <ClInclude Include="RadLineReadConsole.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="StringUtils.h" />
     <ClInclude Include="WinHelpers.h" />
