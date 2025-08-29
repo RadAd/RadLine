@@ -5,7 +5,7 @@
 
 #include "Debug.h"
 
-#include "..\RadReadConsole\RadReadConsole.h"
+#include <RadReadConsole.h>
 
 DWORD WINAPI PipeThread(LPVOID lpvParam)
 {
@@ -41,7 +41,7 @@ DWORD WINAPI PipeThread(LPVOID lpvParam)
 
         TCHAR buffer[1024];
         DWORD cbBytesRead = 0;
-        BOOL fSuccess = ReadFile(hPipe, buffer, ARRAYSIZE(buffer) * sizeof(TCHAR), &cbBytesRead, nullptr);
+        BOOL fSuccess = ReadFile(hPipe, buffer, (ARRAYSIZE(buffer) - 1) * sizeof(TCHAR), &cbBytesRead, nullptr);
 
         if (!fSuccess || cbBytesRead == 0)
         {

@@ -6,7 +6,7 @@
 #include "Debug.h"
 #include "bufstring.h"
 
-#include "..\RadReadConsole\RadReadConsole.h"
+#include <RadReadConsole.h>
 
 #include <wchar.h>
 
