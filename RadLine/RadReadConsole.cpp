@@ -122,19 +122,25 @@ extern "C" {
 
             while (TRUE)
             {
-                const COORD origpos = GetConsoleCursorPosition(hStdOutput);
                 if (enabled == 2)
                     r = RadReadConsole(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, &LocalInputControl);
                 else
                     r = pOrigReadConsoleW(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, &LocalInputControl);
+
                 CleanUpExtra(hStdOutput, &extra);
 
                 if (!r)
                     break;
 
-                const CONSOLE_SCREEN_BUFFER_INFO csbi = GetConsoleScreenBufferInfo(hStdOutput);
-                const COORD startpos = Add(origpos, -(SHORT) LocalInputControl.nInitialChars, csbi.dwSize.X);
-                size_t CursorOffset = Diff(csbi.dwCursorPosition, startpos, csbi.dwSize.X);
+                WCHAR* const pStr = reinterpret_cast<TCHAR*>(lpBuffer);
+
+                size_t CursorOffset = 0;
+                while (CursorOffset < *lpNumberOfCharsRead)
+                {
+                    if (pStr[CursorOffset] < 32 && (1 << pStr[CursorOffset]) & LocalInputControl.dwCtrlWakeupMask)
+                        break;
+                    ++CursorOffset;
+                }
 
                 if (CursorOffset >= *lpNumberOfCharsRead)
                 {
@@ -142,11 +148,12 @@ extern "C" {
                     break;
                 }
 
-                WCHAR* const pStr = reinterpret_cast<TCHAR*>(lpBuffer);
                 WCHAR* const pChar = pStr + CursorOffset;
                 const WCHAR cChar = *pChar;
 
                 // Looks like a bug but the tab character overwrites instead of inserts, but the length is still increased by one
+                const CONSOLE_SCREEN_BUFFER_INFO csbi = GetConsoleScreenBufferInfo(hStdOutput);
+                const COORD startpos = Add(csbi.dwCursorPosition, -(SHORT) CursorOffset, csbi.dwSize.X);
                 DWORD read = 0;
                 ReadConsoleOutputCharacter(hStdOutput, pChar, 1, csbi.dwCursorPosition, &read);
                 --*lpNumberOfCharsRead;
@@ -169,10 +176,7 @@ extern "C" {
                     SetEnvironmentVariableW(L"CD", nullptr);
 
                     if (CursorOffset != 0)
-                    {
-                        const COORD pos = Add(csbi.dwCursorPosition, -(SHORT) CursorOffset, csbi.dwSize.X);
-                        SetConsoleCursorPosition(hStdOutput, pos);
-                    }
+                        SetConsoleCursorPosition(hStdOutput, startpos);
 
                     WriteConsole(hStdOutput, pStr, LocalInputControl.nInitialChars, nullptr, 0);
                     CursorOffset = LocalInputControl.nInitialChars;
@@ -188,8 +192,7 @@ extern "C" {
                 // Leave cursor at end of line, pOrigReadConsoleW has no way of starting with the cursor in the middle
                 if (LocalInputControl.nInitialChars != CursorOffset)
                 {
-                    COORD pos = GetConsoleCursorPosition(hStdOutput);
-                    pos = Add(pos, (SHORT) (LocalInputControl.nInitialChars - CursorOffset), csbi.dwSize.X);
+                    const COORD pos = Add(startpos, (SHORT) LocalInputControl.nInitialChars, csbi.dwSize.X);
                     SetConsoleCursorPosition(hStdOutput, pos);
                 }
                 assert(GetConsoleCursorPosition(hStdOutput) == Add(startpos, (SHORT) LocalInputControl.nInitialChars, csbi.dwSize.X));
