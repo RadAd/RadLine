@@ -10,8 +10,7 @@ Improved command line completion for cmd.exe
 
 Dependencies
 -------
-
-[![Minhook](https://img.shields.io/github/commits-since/m417z/minhook/fdcbfb2?label=Minhook%20commits%20since%20fdcbfb2)](https://github.com/m417z/minhook/commits/multihook/)
++ ![minhook](https://img.shields.io/badge/minhook-fdcbfb2-blue) [![Minhook](https://img.shields.io/github/commits-since/m417z/minhook/fdcbfb2)](https://github.com/m417z/minhook/commits/multihook/)
 
 
 Details

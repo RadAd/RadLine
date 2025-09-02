@@ -14,6 +14,9 @@ end
 
 env = {}
 
+env.__CPI__ = win32.GetConsoleCP
+env.__CPO__ = win32.GetConsoleOutputCP
+
 function env.__PID__()
     return win32.GetProcessId(win32.GetCurrentProcess())
 end

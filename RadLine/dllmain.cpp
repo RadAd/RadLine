@@ -3,9 +3,9 @@
 #include <Windows.h>
 
 #include "Debug.h"
-#include "RadReadConsole.h"
+#include "RadLineReadConsole.h"
 #include "DynEnv.h"
-#include "..\minhook\include\MinHook.h"
+#include <MinHook.h>
 
 HMODULE g_hModule = NULL;
 DWORD WINAPI PipeThread(LPVOID lpvParam);

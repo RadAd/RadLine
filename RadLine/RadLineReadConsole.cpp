@@ -1,12 +1,12 @@
 #pragma once
-#include "RadReadConsole.h"
+#include "RadLineReadConsole.h"
 
 #include "Completion.h"
 #include "WinHelpers.h"
 #include "Debug.h"
 #include "bufstring.h"
 
-#include "..\RadReadConsole\RadReadConsole.h"
+#include <RadReadConsole.h>
 
 #include <wchar.h>
 
