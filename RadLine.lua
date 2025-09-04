@@ -143,9 +143,11 @@ function FindAlias(s)
     s = s:lower()
     local a = {}
     local aliases = win32.GetConsoleAliases("cmd.exe")
-    for k,v in pairs(aliases) do
-        if k:lower():beginswith(s) then
-            a[#a+1] = k
+    if aliases then
+        for k,v in pairs(aliases) do
+            if k:lower():beginswith(s) then
+                a[#a+1] = k
+            end
         end
     end
     return a;
